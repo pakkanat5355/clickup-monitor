@@ -346,6 +346,8 @@ tr.cu-drill td{background:var(--sunk);padding:0}tr.cu-drill:hover td{background:
 .cu-date button{cursor:pointer;font-weight:600}.cu-date button:hover:not(:disabled){background:var(--sunk)}.cu-date button:disabled{opacity:.4;cursor:default}
 .cu-date input{color-scheme:light dark}
 .sec-h .cu-date + p{flex-basis:100%}
+.cu-dt th.who{max-width:220px;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.cu-dt tr:last-child th,.cu-dt tr:last-child td{border-top:1px solid var(--line)}
 /* standalone header */
 .cm-sync{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
 .cm-sync button{font:inherit;font-weight:600;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -500,16 +502,12 @@ function vClickup() {
   const pipe = sts.map(s => { const n = mineOpen.filter(t => t.status === s.status).length;
     return `<button class="cu-st" data-cust="${esc(s.status)}" aria-pressed="${S.cuSt === s.status}"><span class="cu-dot" style="background:${s.color}"></span><span class="lbl">${esc(s.status)}</span><span class="ubar"><i style="width:${n / maxSt * 100}%;background:${s.color}"></i></span><b class="num">${n}</b></button>`; }).join("");
 
-  // hours by customer (period)
-  const cust = {};
+  // hours per day by Work Type and by customer (same person filter + period as the heatmap)
   const byId = Object.fromEntries(C.tasks.map(t => [t.id, t]));
-  for (const e of timeP) {
-    const t = byId[e.task];
-    const k = t ? (t.customer || (t.name.includes(" : ") ? t.name.split(" : ")[0] : "ไม่ระบุลูกค้า")) : (e.list ? e.list.replace(/^.*?:\s*/, "") : "ไม่ระบุ");
-    cust[k] = (cust[k] || 0) + e.h;
-  }
-  const custArr = Object.entries(cust).sort((a, b) => b[1] - a[1]).slice(0, 12), cmax = Math.max(1, ...custArr.map(x => x[1]));
-  const custBars = custArr.map(([k, h]) => `<div class="cu-bar"><span class="lbl" title="${esc(k)}">${esc(k)}</span><span class="ubar"><i style="width:${h / cmax * 100}%"></i></span><b class="num">${+h.toFixed(1)}</b></div>`).join("") || `<div class="empty">ยังไม่มีการลงเวลาในช่วงนี้</div>`;
+  const custOf = e => { const t = byId[e.task]; return t ? (t.customer || (t.name.includes(" : ") ? t.name.split(" : ")[0] : "ไม่ระบุลูกค้า")) : (e.list ? e.list.replace(/^.*?:s*/, "") : "ไม่ระบุ"); };
+  const typeOfE = e => { const t = byId[e.task]; return t ? (t.work_type || "ไม่ระบุ Work Type") : "นอก list กลาง"; };
+  const typeTbl = cuDayTable(timeP, D, T, typeOfE, CU_TYPES);
+  const custTbl = cuDayTable(timeP, D, T, custOf);
   const outList = timeP.filter(e => !e.in_list).reduce((a, e) => a + e.h, 0);
 
   // task table
@@ -555,10 +553,13 @@ function vClickup() {
 
     ${cuProjects(C)}
 
-    <div class="cols">
-      <section class="sec"><div class="sec-h"><h3>งานเปิดตาม Status</h3><p>กดเพื่อกรองตารางด้านล่าง</p></div><div class="panel cu-pipe">${pipe}</div></section>
-      <section class="sec"><div class="sec-h"><h3>ชั่วโมงตามลูกค้า</h3><p>${S.cuDays} วันทำงานล่าสุด${outList ? ` · ${+outList.toFixed(1)} ชม. ลงใน task ที่อยู่นอก list กลาง` : ""}</p></div><div class="panel cu-pipe">${custBars}</div></section>
-    </div>
+    <section class="sec"><div class="sec-h"><h2>ชั่วโมงตาม Work Type รายวัน</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${dm(from)} – ${dm(D[D.length - 1])} · ตัวเลขเล็ก = % ของชั่วโมงวันนั้น · “นอก list กลาง” = ลงเวลาใน task ที่ยังไม่ได้อยู่ใน list กลาง จึงไม่รู้ Work Type</p></div>
+      <div class="panel heat-wrap">${typeTbl}</div></section>
+
+    <section class="sec"><div class="sec-h"><h2>ชั่วโมงตามลูกค้า รายวัน</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${S.cuDays} วันทำงานล่าสุด${outList ? ` · ${+outList.toFixed(1)} ชม. ลงใน task ที่อยู่นอก list กลาง (ใช้ชื่อ list แทนลูกค้า)` : ""}</p></div>
+      <div class="panel heat-wrap">${custTbl}</div></section>
+
+    <section class="sec"><div class="sec-h"><h3>งานเปิดตาม Status</h3><p>กดเพื่อกรองตารางด้านล่าง</p></div><div class="panel cu-pipe">${pipe}</div></section>
 
     <section class="sec"><div class="sec-h"><h2>งานใน list${S.cuSt ? ` · ${esc(S.cuSt)} <button class="linkbtn" data-cust="">ล้าง</button>` : ""}</h2><p>${rows.length} งาน · กดชื่องานเพื่อเปิดใน ClickUp</p></div>
       <div class="ptools"><input class="search" id="cuq" type="search" placeholder="ค้นหางาน ลูกค้า Job ID" value="${esc(S.cuQ)}">
@@ -608,6 +609,24 @@ function cuActivity(C) {
     ${D !== A.date ? `<button data-cuactd="${A.date}">วันนี้</button>` : ""}</div>`;
   return `<section class="sec"><div class="sec-h"><h2>${isToday ? "วันนี้ใครอัปเดตบ้าง" : `ใครอัปเดตบ้าง · ${dow(D)} ${dm(D)}`}</h2>${picker}<p>จาก activity ใน ClickUp ทุก list ย้อนหลังได้ถึง ${dm(from)} · “อัปเดตเอง” = ลงเวลา, comment หรือสร้าง task เอง · “task ขยับ” = task ที่รับผิดชอบถูกแก้ ซึ่งอาจเป็นคนอื่นแก้ (นับเฉพาะวันที่แก้ล่าสุด) · กดการ์ดเพื่อดูรายการ</p></div>
     <div class="cu-act">${cards}</div>${detail}</section>`;
+}
+// rows (Work Type / customer) × days, shaded against the busiest cell; small figure = share of that day's hours
+const CU_TYPES = ["Project", "Ticket Case", "Non-Project", "PreSale", "Meeting", "R&D"];
+function cuDayTable(es, D, T, keyOf, order = []) {
+  const m = {}, dayTot = Object.fromEntries(D.map(d => [d, 0]));
+  for (const e of es) { if (!(e.date in dayTot)) continue; const k = keyOf(e); (m[k] ||= {})[e.date] = (m[k][e.date] || 0) + e.h; dayTot[e.date] += e.h; }
+  for (const k of order) m[k] ||= {}; // fixed rows (Work Types) show even with 0 h
+  const tot = k => D.reduce((a, d) => a + (m[k][d] || 0), 0), all = D.reduce((a, d) => a + dayTot[d], 0);
+  if (!all) return `<div class="empty">ยังไม่มีการลงเวลาในช่วงนี้</div>`;
+  const keys = Object.keys(m).sort((a, b) => { const ia = order.indexOf(a), ib = order.indexOf(b); return (ia < 0) - (ib < 0) || (ia - ib) || tot(b) - tot(a); });
+  const max = Math.max(...keys.flatMap(k => D.map(d => m[k][d] || 0)));
+  const cell = (h, d) => { if (d > T) return `<td class="hoff">–</td>`; if (!h) return `<td class="h0">–</td>`;
+    const r = h / max, k = r < .25 ? 1 : r < .5 ? 2 : r < .75 ? 3 : 4;
+    return `<td class="h${k}" title="${dm(d)}: ${+h.toFixed(2)} ชม."><b>${+h.toFixed(1)}</b><small>${Math.round(h / dayTot[d] * 100)}%</small></td>`; };
+  const head = D.map(d => `<th><span class="num">${dm(d)}</span><br>${dow(d)}</th>`).join("");
+  const rows = keys.map(k => `<tr><th class="who" scope="row" title="${esc(k)}">${esc(k.length > 28 ? k.slice(0, 27) + "…" : k)}</th>${D.map(d => cell(m[k][d] || 0, d)).join("")}<td class="tot num">${+tot(k).toFixed(1)}</td><td class="tot num" style="color:var(--muted);font-weight:400">${Math.round(tot(k) / all * 100)}%</td></tr>`).join("");
+  const foot = `<tr><th class="who" scope="row">รวม</th>${D.map(d => `<td class="tot num">${d > T ? "–" : dayTot[d] ? +dayTot[d].toFixed(1) : "0"}</td>`).join("")}<td class="tot num">${+all.toFixed(1)}</td><td></td></tr>`;
+  return `<table class="heat cu-dt"><thead><tr><th></th>${head}<th>รวม ชม.</th><th>สัดส่วน</th></tr></thead><tbody>${rows}${foot}</tbody></table>`;
 }
 // detail under the daily heatmap: what one person logged on one day (or the whole period when date is "*")
 function cuCellDetail(C, D, T) {
