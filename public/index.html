@@ -341,6 +341,11 @@ tr.cu-drill td{background:var(--sunk);padding:0}tr.cu-drill:hover td{background:
 .cu-new{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--bg, #fff);vertical-align:1px}
 @media (max-width:560px){.cu-ent{grid-template-columns:1fr auto}.cu-ent .m{grid-column:1/-1}}
 
+.cu-date{display:flex;gap:6px;align-items:center}
+.cu-date button,.cu-date input{font:inherit;font-size:13px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg)}
+.cu-date button{cursor:pointer;font-weight:600}.cu-date button:hover:not(:disabled){background:var(--sunk)}.cu-date button:disabled{opacity:.4;cursor:default}
+.cu-date input{color-scheme:light dark}
+.sec-h .cu-date + p{flex-basis:100%}
 /* standalone header */
 .cm-sync{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
 .cm-sync button{font:inherit;font-weight:600;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -380,7 +385,7 @@ const MEMBERS = {
 const ORDER = ["Yut", "Tai", "Pe", "Ing", "DREAM"];
 
 const tryLS0 = k => { try { return localStorage.getItem(k); } catch { return null; } };
-const S = { cuWho: tryLS0("bss-cuwho") || "all", cuDays: +(tryLS0("bss-cudays") || 10), cuSort: "due", cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, sync: {} };
+const S = { cuWho: tryLS0("bss-cuwho") || "all", cuDays: +(tryLS0("bss-cudays") || 10), cuSort: "due", cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, cuActDate: null, sync: {} };
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -567,12 +572,15 @@ function vClickup() {
 const CU_ACT = { time: "ลงเวลา", comment: "comment", created: "สร้าง task", closed: "ปิด task", touched: "task ขยับ" };
 function cuActivity(C) {
   const A = C.activity; if (!A) return "";
-  const isToday = A.date === cuToday();
+  const T = cuToday(), from = A.from || A.date;
+  const D = S.cuActDate && S.cuActDate >= from && S.cuActDate <= A.date ? S.cuActDate : A.date;
+  const isToday = D === T, dayTxt = isToday ? "วันนี้" : `วันที่ ${dm(D)}`;
+  const on = p => p.events.filter(e => (e.date || A.date) === D);
   const cards = ORDER.map(c => {
-    const p = A.people.find(x => x.who === c) || { events: [] }, ev = p.events;
+    const p = A.people.find(x => x.who === c) || { events: [] }, ev = on(p);
     const n = k => ev.filter(e => e.type === k).length, own = ev.filter(e => /time|comment|created/.test(e.type));
     const h = ev.filter(e => e.type === "time").reduce((a, e) => a + e.h, 0);
-    const [cls, badge] = own.length ? ["ok", `อัปเดตเอง · ล่าสุด ${own[0].time}`] : ev.length ? ["warn", "มีแค่ task ขยับ"] : ["crit", "ยังไม่มี activity"];
+    const [cls, badge] = own.length ? ["ok", `อัปเดตเอง · ล่าสุด ${own[0].time}`] : ev.length ? ["warn", "มีแค่ task ขยับ"] : ["crit", isToday ? "ยังไม่มี activity" : "ไม่มี activity"];
     const chips = [["time", n("time") ? `ลงเวลา ${n("time")} · ${+h.toFixed(1)} ชม.` : ""], ["comment", n("comment") ? `comment ${n("comment")}` : ""],
       ["created", n("created") ? `สร้าง ${n("created")}` : ""], ["closed", n("closed") ? `ปิด ${n("closed")}` : ""], ["touched", n("touched") ? `task ขยับ ${n("touched")}` : ""]]
       .filter(x => x[1]).map(([k, x]) => `<span class="cu-flag ${/touched|closed/.test(k) ? "idle" : "ok"}">${x}</span>`).join("");
@@ -582,19 +590,23 @@ function cuActivity(C) {
   }).join("");
   let detail = "";
   if (S.cuAct) {
-    const p = A.people.find(x => x.who === S.cuAct) || { events: [] };
-    const fresh = new Set(A.people.flatMap(x => x.events).filter(e => e.type === "created").map(e => e.task));
-    const fs = [["", "ทั้งหมด", p.events.length], ["created", "สร้างวันนี้", p.events.filter(e => e.type === "created").length], ["closed", "ปิดวันนี้", p.events.filter(e => e.type === "closed").length]];
-    const F = S.cuActF || "", evs = F ? p.events.filter(e => e.type === F) : p.events;
+    const p = A.people.find(x => x.who === S.cuAct) || { events: [] }, ev = on(p);
+    const fresh = new Set(A.people.flatMap(on).filter(e => e.type === "created").map(e => e.task));
+    const fs = [["", "ทั้งหมด", ev.length], ["created", `สร้าง${dayTxt}`, ev.filter(e => e.type === "created").length], ["closed", `ปิด${dayTxt}`, ev.filter(e => e.type === "closed").length]];
+    const F = S.cuActF || "", evs = F ? ev.filter(e => e.type === F) : ev;
     const seg = `<div class="seg" role="group" aria-label="กรองรายการ">${fs.map(([k, l, n]) => `<button data-cuactf="${k}" aria-pressed="${F === k}">${l} <span class="num" style="opacity:.7">${n}</span></button>`).join("")}</div>`;
     const body = evs.map(e => `<div class="cu-ent"><span class="m num">${e.time}<br>${CU_ACT[e.type]}</span>
       <span class="t">${fresh.has(e.task) ? `<span class="cu-new">New</span> ` : ""}${e.url ? `<a class="cu-link ttl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.task_name)}</a>` : esc(e.task_name)} ${e.status ? pill(e.status) : ""}
-        <small>${esc(e.list || "")}${e.type === "time" && e.for_date !== A.date ? ` · ลงย้อนหลังของวันที่ ${dm(e.for_date)}` : ""}${e.note ? ` · “${esc(e.note)}”` : ""}</small></span>
-      <b class="num">${e.type === "time" ? +e.h.toFixed(2) + " ชม." : ""}</b></div>`).join("") || `<div class="empty">${F ? `ไม่มี task ที่${F === "created" ? "สร้าง" : "ปิด"}` : "ยังไม่มี activity ใน ClickUp"}${isToday ? "วันนี้" : ""}</div>`;
-    detail = `<div class="panel cu-detail" style="${mc(S.cuAct)}"><div class="cu-detail-h"><span class="own">${av(S.cuAct)}<b>${S.cuAct} · ${dow(A.date)} ${dm(A.date)}</b></span>
+        <small>${esc(e.list || "")}${e.type === "time" && e.for_date !== D ? ` · ลงเวลาให้วันที่ ${dm(e.for_date)}` : ""}${e.note ? ` · “${esc(e.note)}”` : ""}</small></span>
+      <b class="num">${e.type === "time" ? +e.h.toFixed(2) + " ชม." : ""}</b></div>`).join("") || `<div class="empty">${F ? `ไม่มี task ที่${F === "created" ? "สร้าง" : "ปิด"}` : "ไม่มี activity ใน ClickUp"}${dayTxt}</div>`;
+    detail = `<div class="panel cu-detail" style="${mc(S.cuAct)}"><div class="cu-detail-h"><span class="own">${av(S.cuAct)}<b>${S.cuAct} · ${dow(D)} ${dm(D)}</b></span>
       ${seg}<span class="spacer"></span><button class="x" data-cuact="" aria-label="ปิดรายละเอียด">×</button></div>${body}</div>`;
   }
-  return `<section class="sec"><div class="sec-h"><h2>${isToday ? "วันนี้ใครอัปเดตบ้าง" : `ใครอัปเดตบ้าง · ${dm(A.date)}`}</h2><p>จาก activity ใน ClickUp ทุก list · “อัปเดตเอง” = ลงเวลา, comment หรือสร้าง task เอง · “task ขยับ” = task ที่รับผิดชอบถูกแก้ ซึ่งอาจเป็นคนอื่นแก้ · กดการ์ดเพื่อดูรายการ</p></div>
+  const picker = `<div class="cu-date"><button data-cuactd="${addDays(D, -1)}" ${D <= from ? "disabled" : ""} aria-label="วันก่อนหน้า">‹</button>
+    <input type="date" id="cuactdate" value="${D}" min="${from}" max="${A.date}" aria-label="เลือกวันที่">
+    <button data-cuactd="${addDays(D, 1)}" ${D >= A.date ? "disabled" : ""} aria-label="วันถัดไป">›</button>
+    ${D !== A.date ? `<button data-cuactd="${A.date}">วันนี้</button>` : ""}</div>`;
+  return `<section class="sec"><div class="sec-h"><h2>${isToday ? "วันนี้ใครอัปเดตบ้าง" : `ใครอัปเดตบ้าง · ${dow(D)} ${dm(D)}`}</h2>${picker}<p>จาก activity ใน ClickUp ทุก list ย้อนหลังได้ถึง ${dm(from)} · “อัปเดตเอง” = ลงเวลา, comment หรือสร้าง task เอง · “task ขยับ” = task ที่รับผิดชอบถูกแก้ ซึ่งอาจเป็นคนอื่นแก้ (นับเฉพาะวันที่แก้ล่าสุด) · กดการ์ดเพื่อดูรายการ</p></div>
     <div class="cu-act">${cards}</div>${detail}</section>`;
 }
 // detail under the daily heatmap: what one person logged on one day (or the whole period when date is "*")
@@ -680,6 +692,8 @@ function wireClickup(root) {
     el.onclick = go; el.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } };
   });
   root.querySelectorAll("[data-cuact]").forEach(el => el.onclick = () => { const v = el.dataset.cuact; S.cuAct = !v || S.cuAct === v ? null : v; render(); });
+  root.querySelectorAll("[data-cuactd]").forEach(el => el.onclick = () => { S.cuActDate = el.dataset.cuactd; render(); });
+  const ad = root.querySelector("#cuactdate"); if (ad) ad.onchange = () => { if (ad.value) { S.cuActDate = ad.value; render(); } };
   root.querySelectorAll("[data-cuactf]").forEach(el => el.onclick = () => { S.cuActF = el.dataset.cuactf; render(); });
   root.querySelectorAll("[data-cuproj]").forEach(el => el.onclick = () => { S.cuProj = S.cuProj === el.dataset.cuproj ? null : el.dataset.cuproj; render(); });
   const pd = root.querySelector("#cuprojdone"); if (pd) pd.onchange = () => { S.cuProjDone = pd.checked; render(); };
