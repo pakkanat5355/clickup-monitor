@@ -384,6 +384,10 @@ button.cu-leg-i{cursor:pointer}button.cu-leg-i:hover{background:var(--sunk)}butt
 .cu-tip.on{opacity:1}
 .cu-chart + .cu-detail{margin-top:10px}
 @media (max-width:560px){.cu-hrow{grid-template-columns:1fr 46px}.cu-hbar{grid-column:1/-1;grid-row:2}.cu-hmix{grid-column:1/-1}}
+.cu-tasks th,.cu-proj th{white-space:nowrap}
+.cu-lc{min-width:200px;max-width:320px}
+.cu-lc .tx{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12.5px;line-height:1.45}
+.cu-lc small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
 /* standalone header */
 .cm-sync{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
 .cm-sync button{font:inherit;font-weight:600;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -423,7 +427,7 @@ const MEMBERS = {
 const ORDER = ["Yut", "Tai", "Pe", "Ing", "DREAM"];
 
 const tryLS0 = k => { try { return localStorage.getItem(k); } catch { return null; } };
-const S = { cuWho: tryLS0("bss-cuwho") || "all", cuDays: +(tryLS0("bss-cudays") || 10), cuSort: "due", cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, cuActDate: null, cuWt: null, cuWtView: tryLS0("bss-cuwtview") || "chart", cuCustView: tryLS0("bss-cucustview") || "chart", sync: {} };
+const S = { cuWho: tryLS0("bss-cuwho") || "all", cuDays: +(tryLS0("bss-cudays") || 10), cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, cuActDate: null, cuWt: null, cuSorts: { t: { k: "due", dir: 1 }, p: { k: "tracked", dir: -1 } }, cuWtView: tryLS0("bss-cuwtview") || "chart", cuCustView: tryLS0("bss-cucustview") || "chart", sync: {} };
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -552,22 +556,21 @@ function vClickup() {
     .filter(t => !S.cuSt || t.status === S.cuSt)
     .filter(t => !S.cuQ || (t.name + " " + (t.customer || "") + " " + (t.ref || "")).toLowerCase().includes(S.cuQ.toLowerCase()))
     .filter(t => !S.cuFlagOnly || cuFlags(t).some(f => f[0] !== "idle"));
-  const sorters = { due: (a, b) => (a.due || "9999").localeCompare(b.due || "9999"), updated: (a, b) => a.updated.localeCompare(b.updated), spent: (a, b) => b.spent_h - a.spent_h, status: (a, b) => a.status.localeCompare(b.status) };
-  rows.sort(sorters[S.cuSort] || sorters.due);
+  cuSortBy(rows, "t", { name: t => t.name, who: t => t.who.join(", "), status: t => t.status_order, due: t => t.due, spent: t => t.spent_h || null,
+    updated: t => t.updated, comment: t => t.last_comment?.at });
   const trs = rows.map(t => {
     const fl = cuFlags(t), lateDue = t.due && t.due < T && cuCat(t) !== "done";
     const scol = (C.list.statuses.find(s => s.status === t.status) || {}).color || "var(--idle)";
     return `<tr class="${cuCat(t) === "done" ? "closed" : ""}"><td><a class="cu-link ttl" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.name)}</a>
-      <div class="det">${[t.customer, t.ref, t.work_type].filter(Boolean).map(esc).join(" · ") || "ยังไม่ได้ใส่ field"}</div></td>
+      <div class="det">${[t.customer, t.ref, t.work_type].filter(Boolean).map(esc).join(" · ") || "ยังไม่ได้ใส่ field"}</div>${fl.length ? `<span class="cu-flags" style="margin-top:4px">${fl.map(([k, x]) => `<span class="cu-flag ${k}">${x}</span>`).join("")}</span>` : ""}</td>
       <td>${t.who.length ? t.who.map(w => `<span class="own" style="${mc(w)}">${av(w)}${esc(w)}</span>`).join(" ") : `<span class="noref">–</span>`}</td>
       <td><span class="pill" style="background:color-mix(in srgb, ${scol} 16%, transparent);color:var(--fg)"><span class="cu-dot" style="background:${scol}"></span>${esc(t.status)}</span></td>
       <td class="n ${lateDue ? "due-late-t" : ""}">${t.due ? dm(t.due) : "–"}</td>
       <td class="n">${t.spent_h ? +t.spent_h.toFixed(1) : "–"}</td>
       <td class="n">${dm(t.updated)}</td>
-      <td><span class="cu-flags">${fl.map(([k, x]) => `<span class="cu-flag ${k}">${x}</span>`).join("")}</span></td></tr>`;
+      <td class="cu-lc">${t.last_comment ? `<span class="tx" title="${esc(t.last_comment.text)}">${esc(t.last_comment.text)}</span><small>${esc(t.last_comment.who)} · ${dm(t.last_comment.at.slice(0, 10))} ${t.last_comment.at.slice(11)}</small>` : t.last_comment === null ? `<span class="note-ro">ไม่มี comment</span>` : `<span class="noref">–</span>`}</td></tr>`;
   }).join("");
   const whoBar = ["all", ...team].map(c => `<button data-cuwho="${c}" aria-pressed="${S.cuWho === c}">${c === "all" ? "ทุกคน" : c} <span class="num" style="opacity:.7">${open.filter(t => c === "all" || t.who.includes(c)).length}</span></button>`).join("");
-  const sortOpt = [["due", "Due ใกล้สุด"], ["updated", "ไม่ขยับนานสุด"], ["spent", "ชั่วโมงมากสุด"], ["status", "ตาม status"]];
 
   return `${cuActivity(C)}
     <section class="sec"><div class="sec-h"><h2>ClickUp Monitor</h2><p>ข้อมูลจาก <a class="cu-link" href="${esc(C.list.url)}" target="_blank" rel="noopener">${esc(C.list.name)}</a> และเวลาที่ทั้งทีมลงใน ClickUp · ดึงล่าสุด ${pulled}</p></div>
@@ -598,12 +601,11 @@ function vClickup() {
 
     <section class="sec"><div class="sec-h"><h3>งานเปิดตาม Status</h3><p>กดเพื่อกรองตารางด้านล่าง</p></div><div class="panel cu-pipe">${pipe}</div></section>
 
-    <section class="sec"><div class="sec-h"><h2>งานใน list${S.cuSt ? ` · ${esc(S.cuSt)} <button class="linkbtn" data-cust="">ล้าง</button>` : ""}</h2><p>${rows.length} งาน · กดชื่องานเพื่อเปิดใน ClickUp</p></div>
+    <section class="sec"><div class="sec-h"><h2>งานใน list${S.cuSt ? ` · ${esc(S.cuSt)} <button class="linkbtn" data-cust="">ล้าง</button>` : ""}</h2><p>${rows.length} งาน · กดชื่องานเพื่อเปิดใน ClickUp · กดหัวคอลัมน์เพื่อเรียง</p></div>
       <div class="ptools"><input class="search" id="cuq" type="search" placeholder="ค้นหางาน ลูกค้า Job ID" value="${esc(S.cuQ)}">
-        <select id="cusort" class="search" style="max-width:180px" aria-label="เรียงตาม">${sortOpt.map(([k, l]) => `<option value="${k}" ${S.cuSort === k ? "selected" : ""}>เรียง: ${l}</option>`).join("")}</select>
         <label class="chk"><input type="checkbox" id="cuflag" ${S.cuFlagOnly ? "checked" : ""}> เฉพาะงานที่ต้องตาม</label>
         <label class="chk"><input type="checkbox" id="cudone" ${S.cuShowDone ? "checked" : ""}> รวมที่ปิดในช่วงนี้</label></div>
-      <div class="panel tbl-wrap"><table class="tasks"><thead><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>Status</th><th style="text-align:right">Due</th><th style="text-align:right">ชม.</th><th style="text-align:right">อัปเดต</th><th>ต้องตาม</th></tr></thead>
+      <div class="panel tbl-wrap"><table class="tasks cu-tasks"><thead><tr>${cuTh("t", "name", "งาน")}${cuTh("t", "who", "ผู้รับผิดชอบ")}${cuTh("t", "status", "Status")}${cuTh("t", "due", "Due", 1, true)}${cuTh("t", "spent", "ชม.", -1, true)}${cuTh("t", "updated", "อัปเดต", -1, true)}${cuTh("t", "comment", "Last Comment", -1)}</tr></thead>
         <tbody>${trs || `<tr><td colspan="7" class="empty">ไม่มีงานตามเงื่อนไขนี้</td></tr>`}</tbody></table></div></section>`;
 }
 // who updated ClickUp today. time/comment/created are the person's own actions; closed/touched are tasks they own that changed
@@ -729,6 +731,17 @@ function cuWtDetail(es, typeOf, custOf, kind) {
     <button class="x" data-cuwt="" aria-label="ปิดรายละเอียด">×</button></div>${body}</div>`;
 }
 const cuViewSeg = (k, v) => `<div class="seg" role="group" aria-label="มุมมอง"><button data-cuview="${k}|chart" aria-pressed="${v !== "table"}">กราฟ</button><button data-cuview="${k}|table" aria-pressed="${v === "table"}">ตาราง</button></div>`;
+// sortable table headers: tbl = "t" (tasks) | "p" (projects); d0 = direction on first click; empty values always sort last
+function cuTh(tbl, k, label, d0 = 1, right = false) {
+  const st = S.cuSorts[tbl], on = st.k === k;
+  return `<th${right ? ' style="text-align:right"' : ""} aria-sort="${on ? (st.dir > 0 ? "ascending" : "descending") : "none"}"><button class="sortbtn${on ? " on" : ""}" data-cusort="${tbl}|${k}|${d0}">${label}<span>${on ? (st.dir > 0 ? "▲" : "▼") : "↕"}</span></button></th>`;
+}
+function cuSortBy(arr, tbl, get) {
+  const { k, dir } = S.cuSorts[tbl], fn = get[k]; if (!fn) return arr;
+  const v = x => { const y = fn(x); return y === "" || y == null || Number.isNaN(y) ? null : y; };
+  return arr.sort((a, b) => { const x = v(a), y = v(b); if (x == null || y == null) return (x == null) - (y == null);
+    return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "th")) * dir; });
+}
 // detail under the daily heatmap: what one person logged on one day (or the whole period when date is "*")
 function cuCellDetail(C, D, T) {
   if (!S.cuCell) return "";
@@ -762,7 +775,8 @@ function cuEntryRow(e, byId, when, h) {
 // Project: tracked time (team entries on the task + the project's own list) vs estimate, drill down per person
 function cuProjects(C) {
   const all = (C.projects || []).filter(p => S.cuWho === "all" || p.who.includes(S.cuWho) || p.by_person.some(x => x.who === S.cuWho));
-  const ps = all.filter(p => S.cuProjDone || p.open);
+  const ps = cuSortBy(all.filter(p => S.cuProjDone || p.open), "p", { name: p => p.name, who: p => p.who.join(", "), status: p => [...new Set(p.tasks.map(t => t.status))].join(", "),
+    est: p => p.est_h, tracked: p => p.tracked_h, pct: p => p.est_h ? p.tracked_h / p.est_h : null, remain: p => p.est_h ? p.est_h - p.tracked_h : null, last: p => p.last_log });
   const dmy = d => d ? dm(d) + (d.slice(0, 4) !== cuToday().slice(0, 4) ? "/" + d.slice(2, 4) : "") : "–";
   const fmt = h => h == null ? "–" : (+h.toFixed(1)).toLocaleString();
   const bar = (h, est) => {
@@ -798,10 +812,10 @@ function cuProjects(C) {
   }).join("");
   const nDone = all.filter(p => !p.open).length;
   const over = ps.filter(p => p.est_h && p.tracked_h > p.est_h).length, noEst = ps.filter(p => !p.est_h).length;
-  return `<section class="sec"><div class="sec-h"><h2>Project: เวลาที่ลงเทียบ Estimate</h2><p>เฉพาะงาน Work Type = Project ใน list กลาง รวมเป็นรายโปรเจกต์ตาม Job ID · นับเวลาของทีม BSS ตั้งแต่ ${dm(C.proj_since)}/${C.proj_since.slice(2, 4)} · กดแถวเพื่อดูรายคน</p></div>
+  return `<section class="sec"><div class="sec-h"><h2>Project: เวลาที่ลงเทียบ Estimate</h2><p>เฉพาะงาน Work Type = Project ใน list กลาง รวมเป็นรายโปรเจกต์ตาม Job ID · นับเวลาของทีม BSS ตั้งแต่ ${dm(C.proj_since)}/${C.proj_since.slice(2, 4)} · กดแถวเพื่อดูรายคน · กดหัวคอลัมน์เพื่อเรียง</p></div>
     <div class="ptools"><span class="note-ro">${ps.length} โปรเจกต์ · เกิน estimate <b style="color:${over ? "var(--crit)" : "inherit"}">${over}</b> · ยังไม่มี estimate <b>${noEst}</b></span>
       <label class="chk"><input type="checkbox" id="cuprojdone" ${S.cuProjDone ? "checked" : ""}> รวมที่ปิดแล้ว (${nDone})</label></div>
-    <div class="panel tbl-wrap"><table class="tasks cu-proj"><thead><tr><th>โปรเจกต์</th><th>ผู้รับผิดชอบ</th><th>Status</th><th style="text-align:right">Estimate ชม.</th><th style="text-align:right">ลงแล้ว ชม.</th><th>ใช้ไป</th><th style="text-align:right">คงเหลือ</th><th style="text-align:right">ลงล่าสุด</th></tr></thead>
+    <div class="panel tbl-wrap"><table class="tasks cu-proj"><thead><tr>${cuTh("p", "name", "โปรเจกต์")}${cuTh("p", "who", "ผู้รับผิดชอบ")}${cuTh("p", "status", "Status")}${cuTh("p", "est", "Estimate ชม.", -1, true)}${cuTh("p", "tracked", "ลงแล้ว ชม.", -1, true)}${cuTh("p", "pct", "ใช้ไป", -1)}${cuTh("p", "remain", "คงเหลือ", 1, true)}${cuTh("p", "last", "ลงล่าสุด", -1, true)}</tr></thead>
       <tbody>${rows || `<tr><td colspan="8" class="empty">ไม่มีโปรเจกต์ตามเงื่อนไขนี้</td></tr>`}</tbody></table></div></section>`;
 }
 function wireClickup(root) {
@@ -814,6 +828,8 @@ function wireClickup(root) {
   root.querySelectorAll("[data-cuact]").forEach(el => el.onclick = () => { const v = el.dataset.cuact; S.cuAct = !v || S.cuAct === v ? null : v; render(); });
   root.querySelectorAll("[data-cuwt]").forEach(el => el.onclick = () => { const v = el.dataset.cuwt; S.cuWt = !v || S.cuWt === v ? null : v; render();
     const k = v && v.split("|")[0], d = k && $(`.cu-detail[data-k="${k}"]`); if (d) d.scrollIntoView({ block: "nearest", behavior: "smooth" }); });
+  root.querySelectorAll("[data-cusort]").forEach(el => el.onclick = () => { const [tbl, k, d0] = el.dataset.cusort.split("|"), cur = S.cuSorts[tbl];
+    S.cuSorts[tbl] = cur.k === k ? { k, dir: -cur.dir } : { k, dir: +d0 }; render(); });
   root.querySelectorAll("[data-cuview]").forEach(el => el.onclick = () => { const [k, v] = el.dataset.cuview.split("|");
     if (k === "wt") { S.cuWtView = v; tryLS("bss-cuwtview", v); } else { S.cuCustView = v; tryLS("bss-cucustview", v); } render(); });
   root.querySelectorAll("[data-cuactd]").forEach(el => el.onclick = () => { S.cuActDate = el.dataset.cuactd; render(); });
@@ -826,7 +842,6 @@ function wireClickup(root) {
   root.querySelectorAll("[data-cust]").forEach(el => el.onclick = () => { S.cuSt = S.cuSt === el.dataset.cust ? "" : el.dataset.cust; render(); });
   const q = root.querySelector("#cuq");
   if (q) q.oninput = () => { S.cuQ = q.value; const pos = q.selectionStart; render(); const n = $("#cuq"); n.focus(); n.setSelectionRange(pos, pos); };
-  const so = root.querySelector("#cusort"); if (so) so.onchange = () => { S.cuSort = so.value; render(); };
   const fl = root.querySelector("#cuflag"); if (fl) fl.onchange = () => { S.cuFlagOnly = fl.checked; render(); };
   const dn = root.querySelector("#cudone"); if (dn) dn.onchange = () => { S.cuShowDone = dn.checked; render(); };
 }

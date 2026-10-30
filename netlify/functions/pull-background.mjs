@@ -8,7 +8,8 @@ export default async req => {
   const t = Date.now();
   await setState({ started_at: new Date().toISOString(), reason, error: null });
   try {
-    const out = await pull(process.env.CLICKUP_TOKEN, m => console.log(m));
+    const prev = await store().get("latest", { type: "json" }).catch(() => null);
+    const out = await pull(process.env.CLICKUP_TOKEN, m => console.log(m), prev);
     await store().setJSON("latest", out);
     await setState({ finished_at: new Date().toISOString(), pulled_at: out.pulled_at, seconds: +((Date.now() - t) / 1000).toFixed(1), calls: out.calls, error: null });
   } catch (e) {
