@@ -8,7 +8,7 @@ BSS team dashboard for the central ClickUp list **✅ ITSM Project & Ticket List
 - project time against the estimate;
 - the open tasks.
 
-Hosted on Netlify. It syncs from ClickUp every 30 minutes, and you can also start a sync from the page.
+Hosted on Netlify. Data is pulled from ClickUp only when someone presses **Sync ตอนนี้** (no schedule, to save ClickUp API calls).
 
 ## How it works
 
@@ -18,7 +18,6 @@ Hosted on Netlify. It syncs from ClickUp every 30 minutes, and you can also star
 | Login | `netlify/edge-functions/auth.mjs` | Puts every path behind one team password (`SITE_PASSWORD`). The login cookie lasts 30 days. Log out at `/logout`. |
 | API | `netlify/functions/api.mjs` | `GET /api/clickup` returns the latest snapshot. `GET /api/sync` returns the sync state. `POST /api/sync` starts a sync, at most once every 2 minutes. |
 | Sync | `netlify/functions/pull-background.mjs` | Background function, about 40 s and about 30 ClickUp calls. Runs `lib/pull.mjs` and saves the result to Netlify Blobs (store `clickup`). |
-| Schedule | `netlify/functions/scheduled-sync.mjs` | Every 30 min, 07:00–23:30 Bangkok time, Mon–Sat. |
 
 ClickUp is only read, never written. The token stays in Netlify environment variables. Snapshot data is never committed: `public/clickup.json` is git-ignored.
 
@@ -34,7 +33,7 @@ ClickUp is only read, never written. The token stays in Netlify environment vari
    | `SYNC_SECRET` | Any long random string. It protects the background function. |
 
 3. Redeploy so the variables take effect.
-4. Open the site, log in, and press **Sync ตอนนี้** once to make the first snapshot. After that the schedule keeps it fresh.
+4. Open the site, log in, and press **Sync ตอนนี้** once to make the first snapshot. Press it again whenever you want fresh data.
 
 Scheduled functions only run on the published (production) deploy.
 

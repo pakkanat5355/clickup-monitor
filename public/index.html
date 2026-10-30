@@ -850,12 +850,11 @@ const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 6e4);
 function syncUI() {
   const st = S.sync || {}, box = $("#cmsync"), btn = $("#cmsyncbtn"), txt = $("#cmsynctxt");
   const pulled = S.cu?.pulled_at;
-  $("#asof").textContent = pulled ? `ข้อมูล ณ ${new Date(pulled).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · sync อัตโนมัติทุก 30 นาที` : "ยังไม่มีข้อมูล กด Sync ตอนนี้";
+  $("#asof").textContent = pulled ? `ข้อมูล ณ ${new Date(pulled).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · กด Sync ตอนนี้เพื่อดึงใหม่` : "ยังไม่มีข้อมูล กด Sync ตอนนี้";
   box.classList.toggle("busy", !!st.running);
   btn.disabled = !!st.running || !!st.local;
   btn.lastChild.textContent = st.running ? "กำลัง sync…" : "Sync ตอนนี้";
   txt.innerHTML = st.local ? "โหมดไฟล์ในเครื่อง" : st.error ? `<span class="err" title="${esc(st.error)}">sync ล่าสุดไม่สำเร็จ</span>` : pulled ? esc(ago(pulled)) : "";
-  btn.title = st.reason === "schedule" ? "รอบล่าสุดเป็น sync อัตโนมัติ" : "";
 }
 let poll = null;
 function watchSync() {
@@ -878,7 +877,7 @@ $("#cmsyncbtn").onclick = async () => {
   } catch { S.sync = { error: "ติดต่อ server ไม่ได้" }; }
   syncUI(); if (S.sync.running) watchSync();
 };
-// keep the "x minutes ago" label fresh and pick up scheduled syncs while the tab stays open
+// keep the "x minutes ago" label fresh and pick up syncs someone else started (reads our API only, no ClickUp calls)
 setInterval(async () => {
   if (document.hidden || S.sync?.running || S.sync?.local) return;
   try { const j = await (await fetch("/api/sync", { cache: "no-store" })).json(); S.sync = j.state || {}; if (S.sync.running) watchSync(); else if (S.sync.pulled_at && S.sync.pulled_at !== S.cu?.pulled_at) { S.cuLoading = false; loadCU(); } else syncUI(); } catch {}
