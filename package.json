@@ -1,0 +1,15 @@
+{
+  "name": "clickup-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "BSS team ClickUp Monitor: central list, time tracking and today's activity, synced from ClickUp on Netlify",
+  "scripts": {
+    "pull": "node scripts/pull-local.mjs",
+    "preview": "node scripts/serve-local.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+.netlify/
+.env
+*.token
+# snapshot holds customer/task data: never commit it
+public/clickup.json

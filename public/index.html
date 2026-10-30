@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>ClickUp Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* ClickUp Monitor: styles shared with the BSS Team Tracker. */
+:root{
+  --bg:#f3f4f7; --panel:#ffffff; --sunk:#e9ebf1; --line:#d9dce5; --fg:#1b1f2c; --muted:#5d6477;
+  --accent:#2f4fd1; --accent-ink:#ffffff; --accent-soft:#e3e8fc;
+  --ok:#1f8a5b; --ok-soft:#dcf2e7; --warn:#b26a00; --warn-soft:#fbecd2; --crit:#c2362f; --crit-soft:#f9dfdd; --idle:#6c7385; --idle-soft:#e6e8ee;
+  --m-yut:#2f6fd1; --m-tai:#0f8b8d; --m-pe:#b5541c; --m-ing:#8a46b8; --m-dream:#c0386b;
+  --heat0:#eceef3; --heat1:#cfd9f8; --heat2:#97acef; --heat3:#5a78e0; --heat4:#2f4fd1;
+  --shadow:0 8px 30px rgba(20,28,60,.14);
+  --f-display:"Bai Jamjuree","IBM Plex Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12151d; --panel:#1a1e29; --sunk:#232836; --line:#2e3445; --fg:#e6e9f2; --muted:#9aa2b8;
+  --accent:#8fa2ff; --accent-ink:#11152a; --accent-soft:#262f55;
+  --ok:#5cc897; --ok-soft:#173829; --warn:#f0b452; --warn-soft:#3b2d14; --crit:#f07a72; --crit-soft:#43201e; --idle:#9aa2b8; --idle-soft:#262b38;
+  --m-yut:#79a6ff; --m-tai:#4cc9c4; --m-pe:#f0955c; --m-ing:#c595f0; --m-dream:#f07fa8;
+  --heat0:#222736; --heat1:#283668; --heat2:#3a4f9c; --heat3:#5c74d6; --heat4:#8fa2ff;
+  --shadow:0 8px 30px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151d; --panel:#1a1e29; --sunk:#232836; --line:#2e3445; --fg:#e6e9f2; --muted:#9aa2b8;
+  --accent:#8fa2ff; --accent-ink:#11152a; --accent-soft:#262f55;
+  --ok:#5cc897; --ok-soft:#173829; --warn:#f0b452; --warn-soft:#3b2d14; --crit:#f07a72; --crit-soft:#43201e; --idle:#9aa2b8; --idle-soft:#262b38;
+  --m-yut:#79a6ff; --m-tai:#4cc9c4; --m-pe:#f0955c; --m-ing:#c595f0; --m-dream:#f07fa8;
+  --heat0:#222736; --heat1:#283668; --heat2:#3a4f9c; --heat3:#5c74d6; --heat4:#8fa2ff;
+  --shadow:0 8px 30px rgba(0,0,0,.5); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.55}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--panel)}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1240px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:10px}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand b{font-family:var(--f-display);font-size:19px;font-weight:700;letter-spacing:.01em}
+.brand small{color:var(--muted);font-size:12px}
+.tabs{display:flex;gap:4px;background:var(--sunk);padding:3px;border-radius:9px}
+.tabs button{border:0;background:none;padding:6px 12px;border-radius:7px;cursor:pointer;color:var(--muted);font-weight:500}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.spacer{flex:1}
+.theme{display:flex;gap:2px;border:1px solid var(--line);border-radius:8px;padding:2px}
+.theme button{border:0;background:none;padding:4px 9px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12px}
+.theme button[aria-pressed="true"]{background:var(--accent-soft);color:var(--fg)}
+.sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--idle)}
+.dot.on{background:var(--ok)}
+
+main{max-width:1240px;margin:0 auto;padding-block:20px 60px;display:grid;gap:22px}
+h2{font-family:var(--f-display);font-size:17px;font-weight:600;margin:0;text-wrap:balance}
+h3{font-family:var(--f-display);font-size:15px;font-weight:600;margin:0}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sec{display:grid;gap:12px;min-width:0}
+.sec-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.sec-h p{margin:0;color:var(--muted);font-size:13px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-width:0}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.kpi{background:var(--panel);padding:14px 16px;display:grid;gap:2px}
+.kpi .v{font-family:var(--f-display);font-size:28px;font-weight:700;line-height:1.1}
+.kpi .l{color:var(--muted);font-size:12.5px}
+.kpi .v.crit{color:var(--crit)} .kpi .v.warn{color:var(--warn)}
+
+/* team cards */
+.team{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:12px}
+.mcard{padding:14px;display:grid;gap:10px;cursor:pointer;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:12px;position:relative}
+.mcard:hover{border-color:var(--mc)}
+.mcard-h{display:flex;align-items:center;gap:10px}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;color:#fff;background:var(--mc);font-size:13px;flex:none}
+.mcard-h .nm{font-family:var(--f-display);font-weight:600;font-size:15px;line-height:1.2}
+.mcard-h .sub{font-size:12px;color:var(--muted)}
+.mstats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mstats div{display:grid}
+.mstats b{font-family:var(--f-mono);font-size:17px;font-weight:600}
+.mstats span{font-size:11.5px;color:var(--muted)}
+.spark{width:100%;height:38px;display:block}
+.spark-l{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.miss{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--crit-soft);color:var(--crit);font-weight:600}
+.sent{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--ok-soft);color:var(--ok);font-weight:600}
+
+/* heatmap */
+.heat-wrap{overflow-x:auto;padding:14px}
+.heat{border-collapse:separate;border-spacing:3px;font-size:12px}
+.heat th{font-weight:500;color:var(--muted);padding:0 4px;white-space:nowrap}
+.heat th.who{text-align:left;color:var(--fg);font-weight:600;padding-right:10px}
+.heat td{width:46px;height:30px;text-align:center;border-radius:5px;font-family:var(--f-mono);font-size:11.5px}
+.h0{background:var(--heat0);color:var(--muted)} .h1{background:var(--heat1)} .h2{background:var(--heat2)} .h3{background:var(--heat3);color:#fff} .h4{background:var(--heat4);color:var(--accent-ink)}
+.hx{background:repeating-linear-gradient(45deg,var(--sunk) 0 4px,transparent 4px 8px);color:var(--crit);font-weight:600}
+.heat td.tot{background:none;font-weight:600;color:var(--fg);width:auto;padding:0 6px}
+.heat td{width:58px;height:40px;line-height:1.1}
+.heat td b{display:block;font-weight:600;font-size:13px}
+.heat td small{display:block;font-size:10px;opacity:.75}
+.heat th.off{opacity:.5}
+.hoff{background:none;color:var(--muted);opacity:.5}
+.weekbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.weekbar select{font:inherit;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel, var(--bg));color:var(--fg)}
+
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px}
+.list{display:grid}
+.li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;padding:10px 14px;border-top:1px solid var(--line);align-items:start;cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;width:100%}
+.li:first-child{border-top:0}
+.li:hover{background:var(--sunk)}
+.li .t{min-width:0;overflow-wrap:anywhere}
+.li .t small{display:block;color:var(--muted);font-size:12.5px}
+.li .r{font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
+.pip{width:8px;height:8px;border-radius:50%;margin-top:7px;background:var(--mc)}
+.empty{padding:18px;color:var(--muted);font-size:13px}
+
+/* pills */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:500;white-space:nowrap;line-height:1.6}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-todo{background:var(--idle-soft);color:var(--idle)} .st-prog{background:var(--accent-soft);color:var(--accent)}
+.st-wait{background:var(--warn-soft);color:var(--warn)} .st-done{background:var(--ok-soft);color:var(--ok)} .st-stop{background:var(--crit-soft);color:var(--crit)}
+.pri{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:4px}
+.pri-high{background:var(--crit-soft);color:var(--crit)} .pri-medium{background:var(--warn-soft);color:var(--warn)} .pri-low{background:var(--idle-soft);color:var(--idle)}
+.tag{font-size:11.5px;padding:0 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.proj{border-color:var(--accent);color:var(--accent)}
+.tag.rnd{border-color:var(--m-ing);color:var(--m-ing)}
+.tag.nonproj{border-color:var(--m-tai);color:var(--m-tai)}
+.types{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%;padding-top:10px;border-top:1px solid var(--line)}
+.tchip{display:inline-flex;align-items:baseline;gap:6px;padding:4px 11px;border-radius:99px;border:1px solid var(--line);background:var(--panel);cursor:pointer;color:var(--muted);font-size:12.5px}
+.tchip b{font-size:15px;color:var(--fg)}
+.tchip.proj b{color:var(--accent)} .tchip.nonproj b{color:var(--m-tai)} .tchip.rnd b{color:var(--m-ing)}
+.tchip[aria-pressed="true"]{border-color:var(--fg);background:var(--sunk);color:var(--fg)}
+.bank{font-size:11px;padding:0 6px;border-radius:4px;background:var(--accent);color:var(--accent-ink);font-weight:600}
+
+/* person view */
+.who-bar{display:flex;flex-wrap:wrap;gap:8px}
+.who-bar button{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border:1px solid var(--line);background:var(--panel);border-radius:99px;cursor:pointer}
+.who-bar button .av{width:26px;height:26px;font-size:11px}
+.who-bar button[aria-pressed="true"]{border-color:var(--mc);box-shadow:inset 0 0 0 1px var(--mc)}
+.who-bar .cnt{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.ptools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:5px 12px;cursor:pointer;color:var(--muted);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--fg);font-weight:500}
+.search{flex:1;min-width:160px;max-width:300px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.phead{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;padding:14px 16px}
+.phead .av{width:44px;height:44px;font-size:15px}
+.phead .nm{font-family:var(--f-display);font-size:20px;font-weight:700;line-height:1.1}
+.phead .fact{display:grid}
+.phead .fact b{font-family:var(--f-mono);font-size:18px}
+.phead .fact span{font-size:12px;color:var(--muted)}
+
+.tbl-wrap{overflow-x:auto}
+table.tasks{width:100%;border-collapse:collapse;min-width:820px}
+.tasks th{text-align:left;font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.sortbtn{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;display:inline-flex;gap:4px;align-items:center}
+.sortbtn span{opacity:.45;font-size:10px}
+.sortbtn:hover,.sortbtn.on{color:var(--fg)}
+.sortbtn.on span{opacity:1;color:var(--accent)}
+.tasks td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.tasks tr:last-child td{border-bottom:0}
+.tasks tbody tr{cursor:pointer}
+.tasks tbody tr:hover td{background:var(--sunk)}
+.tasks .ttl{font-weight:500}
+.tasks .det{color:var(--muted);font-size:12.5px;margin-top:2px;max-width:46ch}
+.tasks td.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.age-hot{color:var(--crit);font-weight:600}
+.age-warm{color:var(--warn);font-weight:600}
+tr.closed td{opacity:.62}
+
+/* daily feed */
+.days{display:grid;gap:12px}
+.day{padding:0}
+.day-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.day-h b{font-family:var(--f-display);font-size:15px}
+.ubar{flex:1;min-width:120px;max-width:260px;height:6px;border-radius:9px;background:var(--sunk);overflow:hidden}
+.ubar i{display:block;height:100%;background:var(--accent)}
+.ent{display:grid;grid-template-columns:62px 1fr auto;gap:2px 12px;padding:9px 14px;border-top:1px solid var(--line);cursor:pointer}
+.ent:first-of-type{border-top:0}
+.ent:hover{background:var(--sunk)}
+.ent .sec{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-top:3px;display:block}
+.ent .t{min-width:0;overflow-wrap:anywhere}
+.ent .t small{display:block;color:var(--muted);font-size:12.5px}
+.ent .m{font-family:var(--f-mono);font-size:12px;color:var(--muted);white-space:nowrap}
+
+/* follow-ups */
+.fu{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;padding:12px 14px;border-top:1px solid var(--line)}
+.fu:first-child{border-top:0}
+.fu .q{font-weight:500}
+.fu .meta{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:12px;color:var(--muted);align-items:center}
+.fu .ans{font-size:12.5px;color:var(--ok);background:var(--ok-soft);padding:3px 8px;border-radius:6px;justify-self:start}
+.fu .act{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}
+.fu .act input{flex:1;min-width:160px;padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+.btn{border:1px solid var(--line);background:var(--panel);padding:5px 12px;border-radius:7px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.pri-btn{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.linkbtn{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;text-align:left}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,14,30,.42);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--panel);z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.dr-h{padding:16px 18px 12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.dr-top{display:flex;gap:10px;align-items:flex-start}
+.dr-top h2{flex:1;font-size:18px;overflow-wrap:anywhere}
+.x{border:1px solid var(--line);background:var(--panel);width:32px;height:32px;border-radius:8px;cursor:pointer;flex:none;font-size:16px;line-height:1}
+.dr-b{overflow-y:auto;padding:16px 18px 30px;display:grid;gap:20px;align-content:start}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px 16px}
+.facts div{display:grid;min-width:0}
+.facts span{font-size:11.5px;color:var(--muted)}
+.facts b{font-weight:500;overflow-wrap:anywhere}
+.form{display:grid;gap:8px;padding:14px;background:var(--sunk);border-radius:10px}
+.form .row{display:flex;flex-wrap:wrap;gap:8px}
+.form select,.form textarea{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.form textarea{width:100%;min-height:70px;resize:vertical}
+.form .hint{font-size:12px;color:var(--muted)}
+.tl{display:grid;gap:0;position:relative}
+.tl-day{display:grid;grid-template-columns:72px 1fr;gap:10px;padding-bottom:14px;position:relative}
+.tl-day::before{content:"";position:absolute;left:84px;top:6px;bottom:0;width:2px;background:var(--line)}
+.tl-day:last-child::before{display:none}
+.tl-date{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:2px;text-align:right}
+.tl-date b{display:block;color:var(--fg);font-size:13px}
+.tl-items{display:grid;gap:8px;padding-left:16px;position:relative}
+.tl-items::before{content:"";position:absolute;left:-1px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--panel);border:2px solid var(--accent)}
+.tl-e{display:grid;gap:3px;min-width:0}
+.tl-e .h{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.tl-e p{margin:0;overflow-wrap:anywhere}
+.tl-e.mine{background:var(--accent-soft);padding:8px 10px;border-radius:8px}
+.modal{position:fixed;z-index:51;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,calc(100% - 32px));max-height:calc(100% - 48px);
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.modal h2{flex:1;font-size:17px}
+.modal textarea{flex:1;min-height:320px;width:100%;resize:vertical;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);
+  font-family:var(--f-mono);font-size:13px;line-height:1.6;white-space:pre}
+/* present: the slide is a fixed 16:9 artboard in one deliberate light look, so a screenshot pastes cleanly into any deck */
+.pv-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pv-stage{background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:14px;overflow:hidden}
+.pv-fit{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;overflow:hidden}
+.pv-stage:fullscreen{display:grid;place-items:center;padding:0;border:0;border-radius:0;background:#e9ebef}
+.pv-stage:fullscreen .pv-fit{width:min(100vw,calc(100vh * 16 / 9))}
+.slide{position:absolute;left:0;top:0;width:1600px;height:900px;transform-origin:0 0;background:#f1f2f6;color:#1d1d1f;
+  font-family:"IBM Plex Sans Thai",system-ui,sans-serif;padding:26px 34px;display:flex;flex-direction:column;gap:18px;color-scheme:light}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;font-family:"Bai Jamjuree",sans-serif}
+.sl-top b{font-size:30px;font-weight:700;color:#1d1d1f}
+.sl-top span{font-size:20px;color:#55595f}
+.sl-t{width:100%;border-collapse:separate;border-spacing:0 3px;table-layout:fixed;font-size:19px}
+.sl-t th{color:#fff;font-weight:700;padding:7px 12px;font-size:19px;text-align:center;border-left:3px solid #f1f2f6}
+.sl-t th:first-child{border-left:0}
+.sl-t td{padding:5px 12px;border-left:3px solid #f1f2f6;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;height:36px;color:#1d1d1f}
+.sl-t td:first-child{border-left:0}
+.sl-t td small{font-size:15px;color:#3b3e44}
+.sl-hl th{background:#4ea72e;text-align:left} .sl-hl tr:nth-child(odd) td{background:#d3e6cf} .sl-hl tr:nth-child(even) td{background:#e8f1e6}
+.sl-dev th{background:#e97132} .sl-dev tr:nth-child(odd) td{background:#f7d4c7} .sl-dev tr:nth-child(even) td{background:#fbe8e1}
+.sl-sup th{background:#156082} .sl-sup tr:nth-child(odd) td{background:#ccd5dd} .sl-sup tr:nth-child(even) td{background:#e5e9ee}
+.sl-foot{position:absolute;right:34px;bottom:14px;font-size:14px;color:#7a7e86}
+.sl-in{transform-origin:0 0;display:flex;flex-direction:column;gap:18px}
+.sl-t td.sl-due{text-align:center;font-family:var(--f-mono);font-size:17px}
+.sl-t td.sl-due.late{color:#c0262d;font-weight:700}
+.zoom{display:inline-flex;align-items:center;gap:4px}
+.zoom .btn{min-width:34px}
+#pz-lbl{min-width:86px;text-align:center;font-size:12.5px;color:var(--muted)}
+.pv-ed{display:grid;gap:16px}
+.pv-ed h3{display:flex;align-items:center;gap:8px}
+.pv-ed h3 i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.pv-rows{display:grid;gap:6px}
+.pv-row{display:grid;grid-template-columns:140px minmax(160px,1.4fr) 140px minmax(140px,1.2fr) 140px 100px auto;gap:6px;align-items:center}
+.pv-row input,.pv-ed textarea,.pv-ed input{padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel);min-width:0;width:100%}
+.pv-row .ops{display:flex;gap:3px}
+.pv-row .ops button{border:1px solid var(--line);background:var(--panel);border-radius:6px;width:28px;height:30px;cursor:pointer}
+.pv-head{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.pv-add{display:flex;flex-wrap:wrap;gap:6px}
+.pv-add select{flex:1;min-width:200px;max-width:420px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel)}
+.warnline{color:var(--warn);font-size:12.5px}
+@media (max-width:820px){.pv-row{grid-template-columns:1fr 1fr}.pv-row .ops{grid-column:1/-1}.pv-head{display:none}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:8px;z-index:60;font-size:13px}
+.note-ro{font-size:12.5px;color:var(--muted)}
+@media (max-width:560px){
+  .brand small{display:none}
+  .kpi .v{font-size:24px}
+  .ent{grid-template-columns:1fr auto}
+  .ent .sec{grid-column:1/-1;padding:0}
+}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+.due-late{color:var(--crit);border-color:var(--crit)}.due-late-t{color:var(--crit);font-weight:600}
+.own{display:inline-flex;gap:6px;align-items:center;font-weight:600;white-space:nowrap}
+.noref{color:var(--crit)}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.chk input{width:16px;height:16px;accent-color:var(--accent, currentColor)}
+/* clickup portal */
+.cu-link{color:var(--accent);text-decoration:none}.cu-link:hover{text-decoration:underline}
+a.cu-link.ttl{color:var(--fg)}
+.cu-dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+.cu-pipe{display:grid;padding:6px 0}
+.cu-st,.cu-bar{display:grid;grid-template-columns:auto minmax(110px,150px) 1fr 40px;gap:10px;align-items:center;padding:7px 14px;border:0;background:none;text-align:left;width:100%;color:var(--fg);font:inherit}
+.cu-bar{grid-template-columns:minmax(110px,160px) 1fr 48px}
+.cu-st{cursor:pointer;border-radius:0}.cu-st:hover{background:var(--sunk)}
+.cu-st[aria-pressed="true"]{background:var(--accent-soft)}
+.cu-st .lbl,.cu-bar .lbl{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-st .ubar,.cu-bar .ubar{max-width:none}
+.cu-st b,.cu-bar b{text-align:right;font-family:var(--f-mono);font-weight:600}
+.cu-flags{display:flex;flex-wrap:wrap;gap:4px}
+.cu-flag{font-size:11px;padding:1px 7px;border-radius:99px;white-space:nowrap;font-weight:600}
+.cu-flag.crit{background:var(--crit-soft);color:var(--crit)}.cu-flag.warn{background:var(--warn-soft);color:var(--warn)}.cu-flag.idle{background:var(--idle-soft);color:var(--idle)}
+.cu-perf tbody tr{cursor:pointer}
+.cu-perf td{vertical-align:middle}
+.cu-proj tbody tr[data-cuproj]{cursor:pointer}.cu-proj td{vertical-align:middle}
+.cu-caret{display:inline-block;width:12px;color:var(--muted)}
+tr.cu-drill td{background:var(--sunk);padding:0}tr.cu-drill:hover td{background:var(--sunk)}
+.cu-drill-in{display:grid;gap:12px;padding:14px 16px 16px 34px}
+.cu-drill-meta{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px}
+.cu-drill-tasks{font-size:13px;line-height:1.9}
+.cu-pp{display:grid;gap:6px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--mc);border-radius:8px}
+.cu-pp-h{display:grid;grid-template-columns:auto minmax(80px,1fr) auto;gap:6px 12px;align-items:center}
+.cu-pp-h .note-ro{grid-column:1/-1}
+.cu-pp-t{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.cu-pp-t b{color:var(--fg);font-weight:600}
+.heat td.cu-cell{cursor:pointer}.heat td.cu-cell:hover{outline:2px solid var(--fg);outline-offset:-2px}
+.heat td.cu-sel{outline:2px solid var(--accent);outline-offset:-2px;box-shadow:0 0 0 2px var(--accent)}
+.cu-detail{border-left:3px solid var(--mc)}
+.cu-detail-h{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.cu-detail-h .num{color:var(--muted);font-size:13px}
+.cu-ent{display:grid;grid-template-columns:88px 1fr auto;gap:2px 12px;padding:9px 14px;border-top:1px solid var(--line);align-items:start}
+.cu-ent:first-of-type{border-top:0}
+.cu-ent .m{font-size:12px;color:var(--muted);padding-top:2px}
+.cu-ent .t{min-width:0;overflow-wrap:anywhere}.cu-ent .t small{display:block;color:var(--muted);font-size:12.5px}
+.cu-ent b{font-size:13px;white-space:nowrap}
+.cu-act{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.cu-act-c{display:grid;gap:8px;align-content:start;text-align:left;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--mc);border-radius:10px;color:var(--fg);font:inherit;cursor:pointer}
+.cu-act-c:hover{background:var(--sunk)}.cu-act-c[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:-1px}
+.cu-act-b{font-size:12.5px;font-weight:600}.cu-act-b.ok{color:var(--ok)}.cu-act-b.warn{color:var(--warn)}.cu-act-b.crit{color:var(--crit)}
+.cu-flag.ok{background:var(--ok-soft, color-mix(in srgb, var(--ok) 15%, transparent));color:var(--ok)}
+.cu-act + .cu-detail{margin-top:10px}
+.cu-new{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--bg, #fff);vertical-align:1px}
+@media (max-width:560px){.cu-ent{grid-template-columns:1fr auto}.cu-ent .m{grid-column:1/-1}}
+
+/* standalone header */
+.cm-sync{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.cm-sync button{font:inherit;font-weight:600;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.cm-sync button:hover:not(:disabled){background:var(--sunk)}
+.cm-sync button:disabled{opacity:.6;cursor:default}
+.cm-spin{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:cmspin .8s linear infinite;display:none}
+.cm-sync.busy .cm-spin{display:inline-block}
+@keyframes cmspin{to{transform:rotate(360deg)}}
+.cm-sync .err{color:var(--crit)}
+.cm-out{font-size:12.5px;color:var(--muted);text-decoration:none}.cm-out:hover{color:var(--fg)}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in gut">
+    <div class="brand"><b>ClickUp Monitor</b><small id="asof">กำลังโหลดข้อมูล…</small></div>
+    <div class="spacer"></div>
+    <div class="cm-sync" id="cmsync"><span id="cmsynctxt"></span><button id="cmsyncbtn" type="button"><span class="cm-spin" aria-hidden="true"></span>Sync ตอนนี้</button></div>
+    <div class="theme" role="group" aria-label="ธีม">
+      <button data-th="system" id="th-system">ระบบ</button><button data-th="light" id="th-light">สว่าง</button><button data-th="dark" id="th-dark">มืด</button>
+    </div>
+    <a class="cm-out" href="/logout">ออกจากระบบ</a>
+  </div>
+</header>
+
+<main class="gut" id="app"><div class="empty">กำลังโหลดข้อมูล…</div></main>
+
+<script>
+(() => {
+const MEMBERS = {
+  Yut:   { name: "Yut",   full: "Sarayuth",  st: "SARAYUTH", c: "var(--m-yut)" },
+  Tai:   { name: "Tai",   full: "Apichat",   st: "TAI",      c: "var(--m-tai)" },
+  Pe:    { name: "Pe",    full: "Jirat",     st: "JIRAT",    c: "var(--m-pe)" },
+  Ing:   { name: "Ing",   full: "Ingkarat",  st: "ING",      c: "var(--m-ing)" },
+  DREAM: { name: "DREAM", full: "Ronachai",  st: "DREAM",    c: "var(--m-dream)" },
+};
+const ORDER = ["Yut", "Tai", "Pe", "Ing", "DREAM"];
+
+const tryLS0 = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const S = { cuWho: tryLS0("bss-cuwho") || "all", cuDays: +(tryLS0("bss-cudays") || 10), cuSort: "due", cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, sync: {} };
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function stCat(s) {
+  const x = (s || "").toLowerCase();
+  if (!x || x === "?") return "todo";
+  if (/cancel|ยกเลิก/.test(x)) return "stop";
+  if (/^(done|complete|completed)\b|ปิด/.test(x) && !/deploy/.test(x)) return "done";
+  if (/wait|รอ|pending|tester|uat|review|hold|deploy|follow|ต้องทำเป็น/.test(x)) return "wait";
+  if (/progress|wip|found|ตรวจ/.test(x)) return "prog";
+  if (/queue|to ?do|planned/.test(x)) return "todo";
+  return "prog";
+}
+const pill = s => `<span class="pill st-${stCat(s)}">${esc(s || "ไม่ระบุ")}</span>`;
+const mc = code => `--mc:${MEMBERS[code]?.c || "var(--accent)"}`;
+const av = code => `<span class="av" style="${mc(code)}">${esc((code || "?").slice(0, 2).toUpperCase())}</span>`;
+const tryLS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
+const dm = d => d ? `${+d.slice(8, 10)}/${+d.slice(5, 7)}` : "–";
+const DOW = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+const dow = d => DOW[new Date(d + "T00:00:00").getDay()];
+const addDays = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+
+/* ---------- theme ---------- */
+function setTheme(t) {
+  if (t === "system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+  document.querySelectorAll(".theme button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.th === t)));
+  tryLS("bss-theme", t);
+}
+document.querySelectorAll(".theme button").forEach(b => b.onclick = () => setTheme(b.dataset.th));
+setTheme(tryLS("bss-theme") || "system");
+
+/* ---------- ClickUp portal: central list ✅ ITSM Project & Ticket Lists + time entries (clickup.json) ---------- */
+const CU_STALE = 5, CU_CAP = 6;
+const cuToday = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+function cuCat(t) {
+  if (t.status_type === "closed") return "done";
+  const s = t.status.toLowerCase();
+  if (/queue/.test(s)) return "todo";
+  if (/progress/.test(s)) return "prog";
+  return "wait";
+}
+function cuWorkdays(n) {
+  const out = [], T = cuToday();
+  for (let d = T; out.length < n; d = addDays(d, -1)) { const w = new Date(d + "T00:00:00Z").getUTCDay(); if (w % 6) out.unshift(d); }
+  return out;
+}
+function cuFlags(t) {
+  if (cuCat(t) === "done") return [];
+  const T = cuToday(), f = [];
+  if (!t.who.length) f.push(["crit", "ไม่มีคนรับ"]);
+  if (t.due && t.due < T) f.push(["crit", `เลย Due ${Math.round((Date.parse(T) - Date.parse(t.due)) / 864e5)} วัน`]);
+  if (!t.due) f.push(["warn", "ไม่มี Due"]);
+  if (!t.ref) f.push(["warn", "ไม่มี Job ID"]);
+  const idle = Math.round((Date.parse(T) - Date.parse(t.updated)) / 864e5);
+  if (idle >= CU_STALE) f.push(["warn", `ไม่ขยับ ${idle} วัน`]);
+  if (!t.spent_h && cuCat(t) === "prog") f.push(["idle", "ยังไม่ลงเวลา"]);
+  return f;
+}
+const cuWho = t => S.cuWho === "all" || t.who.includes(S.cuWho);
+function vClickup() {
+  const C = S.cu;
+  if (C === undefined) { loadCU(); return `<div class="panel empty">กำลังโหลดข้อมูลจาก ClickUp…</div>`; }
+  if (!C) return `<div class="panel empty">ยังไม่มีข้อมูล กดปุ่ม “Sync ตอนนี้” ด้านบน ใช้เวลาประมาณ 1 นาที</div>`;
+  const T = cuToday(), D = cuWorkdays(S.cuDays), from = D[0];
+  const team = ORDER;
+  const open = C.tasks.filter(t => cuCat(t) !== "done");
+  const mineOpen = open.filter(cuWho);
+  const closedP = C.tasks.filter(t => cuCat(t) === "done" && t.closed && t.closed >= from && cuWho(t));
+  const timeP = C.time.filter(e => e.date >= from && e.date <= T && (S.cuWho === "all" ? team.includes(e.who) : e.who === S.cuWho));
+  const hP = timeP.reduce((a, e) => a + e.h, 0);
+  const late = mineOpen.filter(t => t.due && t.due < T).length, stale = mineOpen.filter(t => cuFlags(t).some(f => /ไม่ขยับ/.test(f[1]))).length;
+  const nobody = open.filter(t => !t.who.length).length;
+  const pulled = new Date(C.pulled_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  // per-person performance over the period
+  const perf = team.map(c => {
+    const o = open.filter(t => t.who.includes(c));
+    const hrsD = D.map(d => C.time.filter(e => e.who === c && e.date === d).reduce((a, e) => a + e.h, 0));
+    const past = D.filter(d => d <= T).length, h = hrsD.reduce((a, b) => a + b, 0);
+    return { c, open: o.length, prog: o.filter(t => cuCat(t) === "prog").length, wait: o.filter(t => cuCat(t) === "wait").length,
+      late: o.filter(t => t.due && t.due < T).length, stale: o.filter(t => cuFlags(t).some(f => /ไม่ขยับ/.test(f[1]))).length,
+      done: C.tasks.filter(t => cuCat(t) === "done" && t.closed >= from && t.who.includes(c)).length,
+      h, avg: past ? h / past : 0, zero: D.filter((d, i) => d < T && !hrsD[i]).length, hrsD,
+      lastLog: C.time.filter(e => e.who === c).map(e => e.date).sort().pop() || null };
+  });
+  const perfRows = perf.map(p => {
+    const util = Math.round(p.avg / CU_CAP * 100);
+    return `<tr data-cuwho="${p.c}" style="${mc(p.c)}"><td><span class="own">${av(p.c)}${p.c}</span></td>
+      <td class="n">${p.open}</td><td class="n">${p.prog}</td><td class="n">${p.wait}</td>
+      <td class="n ${p.late ? "due-late-t" : ""}">${p.late || "–"}</td><td class="n ${p.stale ? "age-warm" : ""}">${p.stale || "–"}</td>
+      <td class="n">${p.done || "–"}</td><td class="n">${p.h ? +p.h.toFixed(1) : "–"}</td>
+      <td><span style="display:flex;gap:8px;align-items:center"><span class="ubar" style="min-width:70px"><i style="width:${Math.min(100, util)}%;background:${util > 110 ? "var(--crit)" : util < 50 ? "var(--warn)" : "var(--ok)"}"></i></span><span class="num">${util}%</span></span></td>
+      <td class="n ${p.zero ? "age-warm" : ""}">${p.zero || "–"}</td><td class="n">${p.lastLog ? dm(p.lastLog) : "ไม่เคยลง"}</td></tr>`;
+  }).join("");
+
+  // daily heatmap from ClickUp time entries
+  const head = D.map(d => `<th><span class="num">${dm(d)}</span><br>${dow(d)}</th>`).join("");
+  const heatRows = perf.map(p => `<tr><th class="who" scope="row"><span style="${mc(p.c)};display:inline-flex;gap:6px;align-items:center"><span class="pip" style="margin:0"></span>${p.c}</span></th>${p.hrsD.map((h, i) => {
+    const d = D[i]; if (d > T) return `<td class="hoff">–</td>`;
+    const sel = S.cuCell && S.cuCell.who === p.c && S.cuCell.date === d ? " cu-sel" : "";
+    const at = `data-cucell="${p.c}|${d}" role="button" tabindex="0" aria-pressed="${!!sel}"`;
+    if (!h) return d < T ? `<td class="hx cu-cell${sel}" ${at} title="${p.c} ${dm(d)}: ไม่ได้ลงเวลา">✕</td>` : `<td class="h0 cu-cell${sel}" ${at}>0</td>`;
+    const k = h < 2 ? 1 : h < 4 ? 2 : h < CU_CAP ? 3 : 4;
+    return `<td class="h${k} cu-cell${sel}" ${at} title="${p.c} ${dm(d)}: ${+h.toFixed(2)} ชม. · กดดูรายละเอียด"><b>${+h.toFixed(1)}</b><small>${Math.round(h / CU_CAP * 100)}%</small></td>`;
+  }).join("")}<td class="tot num cu-cell${S.cuCell && S.cuCell.who === p.c && S.cuCell.date === "*" ? " cu-sel" : ""}" data-cucell="${p.c}|*" role="button" tabindex="0" title="ดูทั้งช่วง">${+p.h.toFixed(1)}</td></tr>`).join("");
+  const cellDetail = cuCellDetail(C, D, T);
+
+  // status pipeline of open work
+  const sts = C.list.statuses.filter(s => s.type !== "closed" && mineOpen.some(t => t.status === s.status)).sort((a, b) => a.status.localeCompare(b.status));
+  const maxSt = Math.max(1, ...sts.map(s => mineOpen.filter(t => t.status === s.status).length));
+  const pipe = sts.map(s => { const n = mineOpen.filter(t => t.status === s.status).length;
+    return `<button class="cu-st" data-cust="${esc(s.status)}" aria-pressed="${S.cuSt === s.status}"><span class="cu-dot" style="background:${s.color}"></span><span class="lbl">${esc(s.status)}</span><span class="ubar"><i style="width:${n / maxSt * 100}%;background:${s.color}"></i></span><b class="num">${n}</b></button>`; }).join("");
+
+  // hours by customer (period)
+  const cust = {};
+  const byId = Object.fromEntries(C.tasks.map(t => [t.id, t]));
+  for (const e of timeP) {
+    const t = byId[e.task];
+    const k = t ? (t.customer || (t.name.includes(" : ") ? t.name.split(" : ")[0] : "ไม่ระบุลูกค้า")) : (e.list ? e.list.replace(/^.*?:\s*/, "") : "ไม่ระบุ");
+    cust[k] = (cust[k] || 0) + e.h;
+  }
+  const custArr = Object.entries(cust).sort((a, b) => b[1] - a[1]).slice(0, 12), cmax = Math.max(1, ...custArr.map(x => x[1]));
+  const custBars = custArr.map(([k, h]) => `<div class="cu-bar"><span class="lbl" title="${esc(k)}">${esc(k)}</span><span class="ubar"><i style="width:${h / cmax * 100}%"></i></span><b class="num">${+h.toFixed(1)}</b></div>`).join("") || `<div class="empty">ยังไม่มีการลงเวลาในช่วงนี้</div>`;
+  const outList = timeP.filter(e => !e.in_list).reduce((a, e) => a + e.h, 0);
+
+  // task table
+  let rows = (S.cuShowDone ? C.tasks.filter(t => cuCat(t) !== "done" || t.closed >= from) : open).filter(cuWho)
+    .filter(t => !S.cuSt || t.status === S.cuSt)
+    .filter(t => !S.cuQ || (t.name + " " + (t.customer || "") + " " + (t.ref || "")).toLowerCase().includes(S.cuQ.toLowerCase()))
+    .filter(t => !S.cuFlagOnly || cuFlags(t).some(f => f[0] !== "idle"));
+  const sorters = { due: (a, b) => (a.due || "9999").localeCompare(b.due || "9999"), updated: (a, b) => a.updated.localeCompare(b.updated), spent: (a, b) => b.spent_h - a.spent_h, status: (a, b) => a.status.localeCompare(b.status) };
+  rows.sort(sorters[S.cuSort] || sorters.due);
+  const trs = rows.map(t => {
+    const fl = cuFlags(t), lateDue = t.due && t.due < T && cuCat(t) !== "done";
+    const scol = (C.list.statuses.find(s => s.status === t.status) || {}).color || "var(--idle)";
+    return `<tr class="${cuCat(t) === "done" ? "closed" : ""}"><td><a class="cu-link ttl" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.name)}</a>
+      <div class="det">${[t.customer, t.ref, t.work_type].filter(Boolean).map(esc).join(" · ") || "ยังไม่ได้ใส่ field"}</div></td>
+      <td>${t.who.length ? t.who.map(w => `<span class="own" style="${mc(w)}">${av(w)}${esc(w)}</span>`).join(" ") : `<span class="noref">–</span>`}</td>
+      <td><span class="pill" style="background:color-mix(in srgb, ${scol} 16%, transparent);color:var(--fg)"><span class="cu-dot" style="background:${scol}"></span>${esc(t.status)}</span></td>
+      <td class="n ${lateDue ? "due-late-t" : ""}">${t.due ? dm(t.due) : "–"}</td>
+      <td class="n">${t.spent_h ? +t.spent_h.toFixed(1) : "–"}</td>
+      <td class="n">${dm(t.updated)}</td>
+      <td><span class="cu-flags">${fl.map(([k, x]) => `<span class="cu-flag ${k}">${x}</span>`).join("")}</span></td></tr>`;
+  }).join("");
+  const whoBar = ["all", ...team].map(c => `<button data-cuwho="${c}" aria-pressed="${S.cuWho === c}">${c === "all" ? "ทุกคน" : c} <span class="num" style="opacity:.7">${open.filter(t => c === "all" || t.who.includes(c)).length}</span></button>`).join("");
+  const sortOpt = [["due", "Due ใกล้สุด"], ["updated", "ไม่ขยับนานสุด"], ["spent", "ชั่วโมงมากสุด"], ["status", "ตาม status"]];
+
+  return `${cuActivity(C)}
+    <section class="sec"><div class="sec-h"><h2>ClickUp Monitor</h2><p>ข้อมูลจาก <a class="cu-link" href="${esc(C.list.url)}" target="_blank" rel="noopener">${esc(C.list.name)}</a> และเวลาที่ทั้งทีมลงใน ClickUp · ดึงล่าสุด ${pulled}</p></div>
+    <div class="ptools"><div class="seg" role="group" aria-label="คน" style="flex-wrap:wrap">${whoBar}</div>
+      <div class="seg" role="group" aria-label="ช่วงเวลา">${[5, 10, 20].map(n => `<button data-cudays="${n}" aria-pressed="${S.cuDays === n}">${n} วันทำงาน</button>`).join("")}</div></div>
+    <div class="kpis">
+      <div class="kpi"><span class="v num">${mineOpen.length}</span><span class="l">งานเปิดอยู่</span></div>
+      <div class="kpi"><span class="v num ${late ? "crit" : ""}">${late}</span><span class="l">เลย Due</span></div>
+      <div class="kpi"><span class="v num ${stale ? "warn" : ""}">${stale}</span><span class="l">ไม่ขยับ ≥ ${CU_STALE} วัน</span></div>
+      <div class="kpi"><span class="v num">${closedP.length}</span><span class="l">ปิดใน ${S.cuDays} วันทำงาน</span></div>
+      <div class="kpi"><span class="v num">${+hP.toFixed(1)}</span><span class="l">ชั่วโมงที่ลงใน ${S.cuDays} วันทำงาน</span></div>
+      ${S.cuWho === "all" ? `<div class="kpi"><span class="v num ${nobody ? "crit" : ""}">${nobody}</span><span class="l">งานไม่มีคนรับ</span></div>` : ""}
+    </div></section>
+
+    <section class="sec"><div class="sec-h"><h2>Performance รายคน</h2><p>${dm(from)} – ${dm(D[D.length - 1])} · ใช้ ${CU_CAP} ชม./วัน เป็น 100% · ชั่วโมงนับทุก list ใน ClickUp · กดชื่อเพื่อกรอง</p></div>
+      <div class="panel tbl-wrap"><table class="tasks cu-perf"><thead><tr><th>คน</th><th style="text-align:right">เปิด</th><th style="text-align:right">กำลังทำ</th><th style="text-align:right">รอ</th><th style="text-align:right">เลย Due</th><th style="text-align:right">ไม่ขยับ</th><th style="text-align:right">ปิดในช่วง</th><th style="text-align:right">ชม.</th><th>เฉลี่ย/วัน</th><th style="text-align:right">วันไม่ลงเวลา</th><th style="text-align:right">ลงล่าสุด</th></tr></thead><tbody>${perfRows}</tbody></table></div></section>
+
+    <section class="sec"><div class="sec-h"><h2>ชั่วโมงที่ลงรายวัน</h2><p>จาก time tracking ใน ClickUp · ✕ = วันทำงานที่ไม่ได้ลงเวลา · กดช่องเพื่อดูว่าลงอะไรบ้าง (กดช่องรวมเพื่อดูทั้งช่วง)</p></div>
+      <div class="panel heat-wrap"><table class="heat"><thead><tr><th></th>${head}<th>รวม ชม.</th></tr></thead><tbody>${heatRows}</tbody></table></div>${cellDetail}</section>
+
+    ${cuProjects(C)}
+
+    <div class="cols">
+      <section class="sec"><div class="sec-h"><h3>งานเปิดตาม Status</h3><p>กดเพื่อกรองตารางด้านล่าง</p></div><div class="panel cu-pipe">${pipe}</div></section>
+      <section class="sec"><div class="sec-h"><h3>ชั่วโมงตามลูกค้า</h3><p>${S.cuDays} วันทำงานล่าสุด${outList ? ` · ${+outList.toFixed(1)} ชม. ลงใน task ที่อยู่นอก list กลาง` : ""}</p></div><div class="panel cu-pipe">${custBars}</div></section>
+    </div>
+
+    <section class="sec"><div class="sec-h"><h2>งานใน list${S.cuSt ? ` · ${esc(S.cuSt)} <button class="linkbtn" data-cust="">ล้าง</button>` : ""}</h2><p>${rows.length} งาน · กดชื่องานเพื่อเปิดใน ClickUp</p></div>
+      <div class="ptools"><input class="search" id="cuq" type="search" placeholder="ค้นหางาน ลูกค้า Job ID" value="${esc(S.cuQ)}">
+        <select id="cusort" class="search" style="max-width:180px" aria-label="เรียงตาม">${sortOpt.map(([k, l]) => `<option value="${k}" ${S.cuSort === k ? "selected" : ""}>เรียง: ${l}</option>`).join("")}</select>
+        <label class="chk"><input type="checkbox" id="cuflag" ${S.cuFlagOnly ? "checked" : ""}> เฉพาะงานที่ต้องตาม</label>
+        <label class="chk"><input type="checkbox" id="cudone" ${S.cuShowDone ? "checked" : ""}> รวมที่ปิดในช่วงนี้</label></div>
+      <div class="panel tbl-wrap"><table class="tasks"><thead><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>Status</th><th style="text-align:right">Due</th><th style="text-align:right">ชม.</th><th style="text-align:right">อัปเดต</th><th>ต้องตาม</th></tr></thead>
+        <tbody>${trs || `<tr><td colspan="7" class="empty">ไม่มีงานตามเงื่อนไขนี้</td></tr>`}</tbody></table></div></section>`;
+}
+// who updated ClickUp today. time/comment/created are the person's own actions; closed/touched are tasks they own that changed
+const CU_ACT = { time: "ลงเวลา", comment: "comment", created: "สร้าง task", closed: "ปิด task", touched: "task ขยับ" };
+function cuActivity(C) {
+  const A = C.activity; if (!A) return "";
+  const isToday = A.date === cuToday();
+  const cards = ORDER.map(c => {
+    const p = A.people.find(x => x.who === c) || { events: [] }, ev = p.events;
+    const n = k => ev.filter(e => e.type === k).length, own = ev.filter(e => /time|comment|created/.test(e.type));
+    const h = ev.filter(e => e.type === "time").reduce((a, e) => a + e.h, 0);
+    const [cls, badge] = own.length ? ["ok", `อัปเดตเอง · ล่าสุด ${own[0].time}`] : ev.length ? ["warn", "มีแค่ task ขยับ"] : ["crit", "ยังไม่มี activity"];
+    const chips = [["time", n("time") ? `ลงเวลา ${n("time")} · ${+h.toFixed(1)} ชม.` : ""], ["comment", n("comment") ? `comment ${n("comment")}` : ""],
+      ["created", n("created") ? `สร้าง ${n("created")}` : ""], ["closed", n("closed") ? `ปิด ${n("closed")}` : ""], ["touched", n("touched") ? `task ขยับ ${n("touched")}` : ""]]
+      .filter(x => x[1]).map(([k, x]) => `<span class="cu-flag ${/touched|closed/.test(k) ? "idle" : "ok"}">${x}</span>`).join("");
+    return `<button class="cu-act-c" data-cuact="${c}" aria-pressed="${S.cuAct === c}" style="${mc(c)}">
+      <span class="own">${av(c)}<b>${c}</b></span><span class="cu-act-b ${cls}">${badge}</span>
+      <span class="cu-flags">${chips || `<span class="note-ro">ลงเวลาล่าสุด ${p.last_time_log ? dm(p.last_time_log.slice(0, 10)) + " " + p.last_time_log.slice(11) : "ไม่เคยลง"}</span>`}</span></button>`;
+  }).join("");
+  let detail = "";
+  if (S.cuAct) {
+    const p = A.people.find(x => x.who === S.cuAct) || { events: [] };
+    const fresh = new Set(A.people.flatMap(x => x.events).filter(e => e.type === "created").map(e => e.task));
+    const fs = [["", "ทั้งหมด", p.events.length], ["created", "สร้างวันนี้", p.events.filter(e => e.type === "created").length], ["closed", "ปิดวันนี้", p.events.filter(e => e.type === "closed").length]];
+    const F = S.cuActF || "", evs = F ? p.events.filter(e => e.type === F) : p.events;
+    const seg = `<div class="seg" role="group" aria-label="กรองรายการ">${fs.map(([k, l, n]) => `<button data-cuactf="${k}" aria-pressed="${F === k}">${l} <span class="num" style="opacity:.7">${n}</span></button>`).join("")}</div>`;
+    const body = evs.map(e => `<div class="cu-ent"><span class="m num">${e.time}<br>${CU_ACT[e.type]}</span>
+      <span class="t">${fresh.has(e.task) ? `<span class="cu-new">New</span> ` : ""}${e.url ? `<a class="cu-link ttl" href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.task_name)}</a>` : esc(e.task_name)} ${e.status ? pill(e.status) : ""}
+        <small>${esc(e.list || "")}${e.type === "time" && e.for_date !== A.date ? ` · ลงย้อนหลังของวันที่ ${dm(e.for_date)}` : ""}${e.note ? ` · “${esc(e.note)}”` : ""}</small></span>
+      <b class="num">${e.type === "time" ? +e.h.toFixed(2) + " ชม." : ""}</b></div>`).join("") || `<div class="empty">${F ? `ไม่มี task ที่${F === "created" ? "สร้าง" : "ปิด"}` : "ยังไม่มี activity ใน ClickUp"}${isToday ? "วันนี้" : ""}</div>`;
+    detail = `<div class="panel cu-detail" style="${mc(S.cuAct)}"><div class="cu-detail-h"><span class="own">${av(S.cuAct)}<b>${S.cuAct} · ${dow(A.date)} ${dm(A.date)}</b></span>
+      ${seg}<span class="spacer"></span><button class="x" data-cuact="" aria-label="ปิดรายละเอียด">×</button></div>${body}</div>`;
+  }
+  return `<section class="sec"><div class="sec-h"><h2>${isToday ? "วันนี้ใครอัปเดตบ้าง" : `ใครอัปเดตบ้าง · ${dm(A.date)}`}</h2><p>จาก activity ใน ClickUp ทุก list · “อัปเดตเอง” = ลงเวลา, comment หรือสร้าง task เอง · “task ขยับ” = task ที่รับผิดชอบถูกแก้ ซึ่งอาจเป็นคนอื่นแก้ · กดการ์ดเพื่อดูรายการ</p></div>
+    <div class="cu-act">${cards}</div>${detail}</section>`;
+}
+// detail under the daily heatmap: what one person logged on one day (or the whole period when date is "*")
+function cuCellDetail(C, D, T) {
+  if (!S.cuCell) return "";
+  const { who, date } = S.cuCell, all = date === "*";
+  const es = C.time.filter(e => e.who === who && (all ? e.date >= D[0] && e.date <= T : e.date === date))
+    .sort((a, b) => (a.date + a.at).localeCompare(b.date + b.at));
+  const byId = Object.fromEntries(C.tasks.map(t => [t.id, t]));
+  const tot = es.reduce((a, e) => a + e.h, 0);
+  const title = all ? `${who} · ${dm(D[0])} – ${dm(D[D.length - 1])}` : `${who} · ${dow(date)} ${dm(date)}`;
+  // whole period: group by task; single day: one row per entry with its time span
+  let body;
+  if (!es.length) body = `<div class="empty">${all ? "ไม่ได้ลงเวลาในช่วงนี้" : "ไม่ได้ลงเวลาวันนี้"} ใน ClickUp</div>`;
+  else if (all) {
+    const g = {};
+    for (const e of es) { const k = e.task || e.task_name; (g[k] ||= { e, h: 0, days: new Set() }); g[k].h += e.h; g[k].days.add(e.date); }
+    body = Object.values(g).sort((a, b) => b.h - a.h).map(({ e, h, days }) => cuEntryRow(e, byId, `${days.size} วัน`, h)).join("");
+  } else body = es.map(e => cuEntryRow(e, byId, `${e.at}${e.end ? "–" + e.end : ""}`, e.h)).join("");
+  return `<div class="panel cu-detail" style="${mc(who)}"><div class="cu-detail-h"><span class="own">${av(who)}<b>${esc(title)}</b></span>
+      <span class="num">${+tot.toFixed(2)} ชม.${all ? "" : ` · ${Math.round(tot / CU_CAP * 100)}%`} · ${es.length} รายการ</span><span class="spacer"></span>
+      <button class="x" data-cucell="" aria-label="ปิดรายละเอียด">×</button></div>${body}</div>`;
+}
+function cuEntryRow(e, byId, when, h) {
+  const t = byId[e.task], url = e.task ? (t?.url || `https://app.clickup.com/t/${e.task}`) : null;
+  const where = t ? [t.customer, t.ref].filter(Boolean).join(" · ") || "list กลาง" : (e.list || "");
+  return `<div class="cu-ent"><span class="m num">${esc(when)}</span>
+    <span class="t">${url ? `<a class="cu-link ttl" href="${esc(url)}" target="_blank" rel="noopener">${esc(e.task_name)}</a>` : esc(e.task_name)}
+      ${e.status ? pill(e.status) : ""}${!e.in_list && e.task ? ` <span class="cu-flag idle">นอก list กลาง</span>` : ""}
+      <small>${esc(where)}${e.note ? ` · “${esc(e.note)}”` : ""}</small></span>
+    <b class="num">${+h.toFixed(2)} ชม.</b></div>`;
+}
+// Project: tracked time (team entries on the task + the project's own list) vs estimate, drill down per person
+function cuProjects(C) {
+  const all = (C.projects || []).filter(p => S.cuWho === "all" || p.who.includes(S.cuWho) || p.by_person.some(x => x.who === S.cuWho));
+  const ps = all.filter(p => S.cuProjDone || p.open);
+  const dmy = d => d ? dm(d) + (d.slice(0, 4) !== cuToday().slice(0, 4) ? "/" + d.slice(2, 4) : "") : "–";
+  const fmt = h => h == null ? "–" : (+h.toFixed(1)).toLocaleString();
+  const bar = (h, est) => {
+    if (!est) return `<span class="note-ro">ไม่มี estimate</span>`;
+    const pct = Math.round(h / est * 100), col = pct > 100 ? "var(--crit)" : pct > 80 ? "var(--warn)" : "var(--ok)";
+    return `<span style="display:flex;gap:8px;align-items:center"><span class="ubar" style="min-width:90px"><i style="width:${Math.min(100, pct)}%;background:${col}"></i></span><span class="num" style="color:${pct > 100 ? "var(--crit)" : "inherit"};font-weight:${pct > 100 ? 600 : 400}">${pct}%</span></span>`;
+  };
+  const rows = ps.map(p => {
+    const on = S.cuProj === p.key, focus = S.cuWho !== "all" ? p.by_person.find(x => x.who === S.cuWho) : null;
+    const st = [...new Set(p.tasks.map(t => t.status))].join(", ");
+    const head = `<tr class="${p.open ? "" : "closed"}" data-cuproj="${esc(p.key)}" aria-expanded="${on}"><td><span class="cu-caret">${on ? "▾" : "▸"}</span> <span class="ttl">${esc(p.name)}</span>
+        <div class="det">${[p.customer, p.code || p.key].filter(Boolean).map(esc).join(" · ")}</div></td>
+      <td>${p.who.map(w => `<span class="own" style="${mc(w)}">${av(w)}${esc(w)}</span>`).join(" ") || "–"}</td>
+      <td style="font-size:12.5px">${esc(st)}</td>
+      <td class="n" title="${esc(p.est_src || "")}">${fmt(p.est_h)}</td>
+      <td class="n">${fmt(p.tracked_h)}${focus ? `<div class="det">${esc(S.cuWho)} ${fmt(focus.h)}</div>` : ""}</td>
+      <td>${bar(p.tracked_h, p.est_h)}</td>
+      <td class="n">${p.est_h ? fmt(p.est_h - p.tracked_h) : "–"}</td>
+      <td class="n">${dmy(p.last_log)}</td></tr>`;
+    if (!on) return head;
+    const max = Math.max(1, ...p.by_person.map(x => x.h));
+    const people = p.by_person.map(x => `<div class="cu-pp" style="${mc(x.who)}">
+        <div class="cu-pp-h"><span class="own">${av(x.who)}${esc(x.who)}</span><span class="ubar"><i style="width:${x.h / max * 100}%;background:var(--mc)"></i></span>
+          <b class="num">${fmt(x.h)} ชม.</b><span class="note-ro">${p.tracked_h ? Math.round(x.h / p.tracked_h * 100) : 0}% ของโปรเจกต์${x.est_h ? ` · est ${fmt(x.est_h)} ชม. (${Math.round(x.h / x.est_h * 100)}%)` : ""}</span></div>
+        <div class="cu-pp-t">${x.tasks.map(t => `<span>${esc(t.name)} <b class="num">${fmt(t.h)}</b></span>`).join("")}</div></div>`).join("")
+      || `<div class="empty">ทีมยังไม่ได้ลงเวลาใน ClickUp สำหรับโปรเจกต์นี้</div>`;
+    const links = p.tasks.map(t => `<a class="cu-link" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.name)}</a> ${pill(t.status)}${t.due ? ` <span class="note-ro">Due ${dm(t.due)}</span>` : ""}`).join("<br>");
+    return head + `<tr class="cu-drill"><td colspan="8"><div class="cu-drill-in">
+        <div class="cu-drill-meta"><span>Estimate: <b>${p.est_h ? fmt(p.est_h) + " ชม." : "ยังไม่มี"}</b>${p.est_src ? ` <span class="note-ro">(${esc(p.est_src)})</span>` : ""}</span>
+          <span>ลงเวลาครั้งแรก ${dmy(p.first_log)} · ล่าสุด ${dmy(p.last_log)}</span>
+          <span class="note-ro">นับเวลาจาก: task ใน list กลาง${p.lists.length ? " + list " + p.lists.map(esc).join(", ") : ""}</span></div>
+        <div class="cu-drill-tasks">${links}</div>${people}</div></td></tr>`;
+  }).join("");
+  const nDone = all.filter(p => !p.open).length;
+  const over = ps.filter(p => p.est_h && p.tracked_h > p.est_h).length, noEst = ps.filter(p => !p.est_h).length;
+  return `<section class="sec"><div class="sec-h"><h2>Project: เวลาที่ลงเทียบ Estimate</h2><p>เฉพาะงาน Work Type = Project ใน list กลาง รวมเป็นรายโปรเจกต์ตาม Job ID · นับเวลาของทีม BSS ตั้งแต่ ${dm(C.proj_since)}/${C.proj_since.slice(2, 4)} · กดแถวเพื่อดูรายคน</p></div>
+    <div class="ptools"><span class="note-ro">${ps.length} โปรเจกต์ · เกิน estimate <b style="color:${over ? "var(--crit)" : "inherit"}">${over}</b> · ยังไม่มี estimate <b>${noEst}</b></span>
+      <label class="chk"><input type="checkbox" id="cuprojdone" ${S.cuProjDone ? "checked" : ""}> รวมที่ปิดแล้ว (${nDone})</label></div>
+    <div class="panel tbl-wrap"><table class="tasks cu-proj"><thead><tr><th>โปรเจกต์</th><th>ผู้รับผิดชอบ</th><th>Status</th><th style="text-align:right">Estimate ชม.</th><th style="text-align:right">ลงแล้ว ชม.</th><th>ใช้ไป</th><th style="text-align:right">คงเหลือ</th><th style="text-align:right">ลงล่าสุด</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="8" class="empty">ไม่มีโปรเจกต์ตามเงื่อนไขนี้</td></tr>`}</tbody></table></div></section>`;
+}
+function wireClickup(root) {
+  root.querySelectorAll("[data-cucell]").forEach(el => {
+    const go = () => { const v = el.dataset.cucell; if (!v) { S.cuCell = null; return render(); }
+      const [who, date] = v.split("|"); S.cuCell = S.cuCell && S.cuCell.who === who && S.cuCell.date === date ? null : { who, date }; render();
+      const d = $(".cu-detail"); if (d) d.scrollIntoView({ block: "nearest", behavior: "smooth" }); };
+    el.onclick = go; el.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } };
+  });
+  root.querySelectorAll("[data-cuact]").forEach(el => el.onclick = () => { const v = el.dataset.cuact; S.cuAct = !v || S.cuAct === v ? null : v; render(); });
+  root.querySelectorAll("[data-cuactf]").forEach(el => el.onclick = () => { S.cuActF = el.dataset.cuactf; render(); });
+  root.querySelectorAll("[data-cuproj]").forEach(el => el.onclick = () => { S.cuProj = S.cuProj === el.dataset.cuproj ? null : el.dataset.cuproj; render(); });
+  const pd = root.querySelector("#cuprojdone"); if (pd) pd.onchange = () => { S.cuProjDone = pd.checked; render(); };
+  root.querySelectorAll("[data-cuwho]").forEach(el => el.onclick = () => { S.cuWho = S.cuWho === el.dataset.cuwho && el.tagName === "TR" ? "all" : el.dataset.cuwho; tryLS("bss-cuwho", S.cuWho); render(); });
+  root.querySelectorAll("[data-cudays]").forEach(el => el.onclick = () => { S.cuDays = +el.dataset.cudays; tryLS("bss-cudays", String(S.cuDays)); render(); });
+  root.querySelectorAll("[data-cust]").forEach(el => el.onclick = () => { S.cuSt = S.cuSt === el.dataset.cust ? "" : el.dataset.cust; render(); });
+  const q = root.querySelector("#cuq");
+  if (q) q.oninput = () => { S.cuQ = q.value; const pos = q.selectionStart; render(); const n = $("#cuq"); n.focus(); n.setSelectionRange(pos, pos); };
+  const so = root.querySelector("#cusort"); if (so) so.onchange = () => { S.cuSort = so.value; render(); };
+  const fl = root.querySelector("#cuflag"); if (fl) fl.onchange = () => { S.cuFlagOnly = fl.checked; render(); };
+  const dn = root.querySelector("#cudone"); if (dn) dn.onchange = () => { S.cuShowDone = dn.checked; render(); };
+}
+
+function render() {
+  const app = $("#app");
+  app.innerHTML = vClickup();
+  if (S.cu) wireClickup(app);
+}
+
+/* ---------- data + sync ---------- */
+// Netlify: /api/clickup returns {data, state}. Without the API (local preview) fall back to a static clickup.json.
+function loadCU() {
+  if (S.cuLoading) return; S.cuLoading = true;
+  fetch("/api/clickup", { cache: "no-store" }).then(r => { if (r.status === 401) { location.reload(); throw 0; } if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(j => { S.cu = j.data || null; S.sync = j.state || {}; if (!j.data) S.cu = null; })
+    .catch(e => e === 0 ? null : fetch("clickup.json").then(r => r.json()).then(d => { S.cu = d; S.sync = { local: true }; }).catch(() => { S.cu = null; }))
+    .finally(() => { S.cuLoading = false; syncUI(); render(); });
+}
+const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 6e4); return m < 1 ? "เมื่อสักครู่" : m < 60 ? `${m} นาทีที่แล้ว` : m < 1440 ? `${Math.floor(m / 60)} ชม. ${m % 60} นาทีที่แล้ว` : `${Math.floor(m / 1440)} วันที่แล้ว`; };
+function syncUI() {
+  const st = S.sync || {}, box = $("#cmsync"), btn = $("#cmsyncbtn"), txt = $("#cmsynctxt");
+  const pulled = S.cu?.pulled_at;
+  $("#asof").textContent = pulled ? `ข้อมูล ณ ${new Date(pulled).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · sync อัตโนมัติทุก 30 นาที` : "ยังไม่มีข้อมูล กด Sync ตอนนี้";
+  box.classList.toggle("busy", !!st.running);
+  btn.disabled = !!st.running || !!st.local;
+  btn.lastChild.textContent = st.running ? "กำลัง sync…" : "Sync ตอนนี้";
+  txt.innerHTML = st.local ? "โหมดไฟล์ในเครื่อง" : st.error ? `<span class="err" title="${esc(st.error)}">sync ล่าสุดไม่สำเร็จ</span>` : pulled ? esc(ago(pulled)) : "";
+  btn.title = st.reason === "schedule" ? "รอบล่าสุดเป็น sync อัตโนมัติ" : "";
+}
+let poll = null;
+function watchSync() {
+  clearInterval(poll);
+  const was = S.cu?.pulled_at;
+  poll = setInterval(async () => {
+    try {
+      const j = await (await fetch("/api/sync", { cache: "no-store" })).json(); S.sync = j.state || {}; syncUI();
+      if (!S.sync.running) { clearInterval(poll); if (S.sync.pulled_at && S.sync.pulled_at !== was) { S.cuLoading = false; loadCU(); } }
+    } catch { clearInterval(poll); }
+  }, 4000);
+}
+$("#cmsyncbtn").onclick = async () => {
+  const btn = $("#cmsyncbtn"); btn.disabled = true;
+  try {
+    const r = await fetch("/api/sync", { method: "POST" }), j = await r.json();
+    S.sync = { ...(j.state || {}), running: j.ok || j.why === "running" };
+    if (j.why === "cooldown") { S.sync.running = false; $("#cmsynctxt").textContent = "เพิ่ง sync ไป รอ 2 นาทีแล้วค่อยกดอีกครั้ง"; btn.disabled = false; return; }
+    if (!j.ok && j.why !== "running") { S.sync.error = j.why || "sync ไม่สำเร็จ"; }
+  } catch { S.sync = { error: "ติดต่อ server ไม่ได้" }; }
+  syncUI(); if (S.sync.running) watchSync();
+};
+// keep the "x minutes ago" label fresh and pick up scheduled syncs while the tab stays open
+setInterval(async () => {
+  if (document.hidden || S.sync?.running || S.sync?.local) return;
+  try { const j = await (await fetch("/api/sync", { cache: "no-store" })).json(); S.sync = j.state || {}; if (S.sync.running) watchSync(); else if (S.sync.pulled_at && S.sync.pulled_at !== S.cu?.pulled_at) { S.cuLoading = false; loadCU(); } else syncUI(); } catch {}
+}, 5 * 60e3);
+setInterval(syncUI, 60e3);
+
+loadCU();
+})();
+</script>
+</body>
+</html>
