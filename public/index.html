@@ -348,6 +348,42 @@ tr.cu-drill td{background:var(--sunk);padding:0}tr.cu-drill:hover td{background:
 .sec-h .cu-date + p{flex-basis:100%}
 .cu-dt th.who{max-width:220px;overflow:hidden;text-overflow:ellipsis;font-weight:500}
 .cu-dt tr:last-child th,.cu-dt tr:last-child td{border-top:1px solid var(--line)}
+/* charts: Work Type slots (validated categorical order) + greys for unknown buckets */
+:root{--wt1:#2a78d6;--wt2:#eb6834;--wt3:#1baf7a;--wt4:#eda100;--wt5:#e87ba4;--wt6:#6250d6;--wt-un:#9aa0ad;--wt-out:repeating-linear-gradient(45deg,#b9bdc7 0 3px,#d9dce3 3px 6px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--wt1:#3987e5;--wt2:#d95926;--wt3:#199e70;--wt4:#c98500;--wt5:#d55181;--wt6:#9085e9;--wt-un:#6b7286;--wt-out:repeating-linear-gradient(45deg,#4a5062 0 3px,#33384a 3px 6px)}}
+:root[data-theme="dark"]{--wt1:#3987e5;--wt2:#d95926;--wt3:#199e70;--wt4:#c98500;--wt5:#d55181;--wt6:#9085e9;--wt-un:#6b7286;--wt-out:repeating-linear-gradient(45deg,#4a5062 0 3px,#33384a 3px 6px)}
+.cu-chart{padding:14px 16px 12px;overflow-x:auto}
+.cu-leg{display:flex;flex-wrap:wrap;gap:4px 6px;margin-bottom:12px}
+.cu-leg-i{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:3px 9px;border-radius:99px;border:1px solid transparent;background:none;color:var(--fg)}
+button.cu-leg-i{cursor:pointer}button.cu-leg-i:hover{background:var(--sunk)}button.cu-leg-i[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.cu-leg-i i,.cu-hmix i,.cu-sw{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+.cu-leg-i b{color:var(--muted);font-weight:500}
+.cu-cols{display:grid;grid-template-columns:repeat(var(--n),minmax(34px,1fr));gap:6px;align-items:end;min-width:calc(var(--n) * 40px);border-bottom:0}
+.cu-col{display:grid;justify-items:center;gap:4px}
+.cu-col.off{opacity:.4}
+.cu-col-t{font-size:11.5px;font-weight:600;color:var(--fg);min-height:16px}
+.cu-stack{display:flex;flex-direction:column-reverse;justify-content:flex-start;gap:2px;width:min(100%,46px);border-bottom:1px solid var(--line)}
+.cu-seg{display:block;width:100%;border:0;padding:0;cursor:pointer;border-radius:0}
+.cu-stack .cu-seg:last-child{border-radius:4px 4px 0 0}
+.cu-seg:hover,.cu-hseg:hover{filter:brightness(1.12);outline:2px solid var(--fg);outline-offset:1px}
+.cu-seg[aria-pressed="true"],.cu-hseg[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:1px}
+.cu-col-x{border:0;background:none;color:var(--muted);font-size:11px;line-height:1.25;padding:2px 4px;border-radius:6px;cursor:pointer;text-align:center}
+.cu-col-x:hover{background:var(--sunk);color:var(--fg)}.cu-col-x[aria-pressed="true"]{background:var(--accent-soft);color:var(--fg)}
+.cu-hrows{display:grid;gap:10px}
+.cu-hrow{display:grid;grid-template-columns:minmax(120px,210px) 1fr 52px;gap:4px 12px;align-items:center}
+.cu-hname{border:0;background:none;color:var(--fg);text-align:left;font-size:13px;padding:2px 4px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cu-hname:hover{background:var(--sunk)}.cu-hname[aria-pressed="true"]{background:var(--accent-soft)}
+.cu-hname .rk{color:var(--muted);font-size:11px;margin-right:6px}
+.cu-hbar{display:flex;gap:2px;height:18px}
+.cu-hseg{border:0;padding:0;height:100%;cursor:pointer;min-width:3px;border-radius:0}
+.cu-hbar .cu-hseg:last-child{border-radius:0 4px 4px 0}
+.cu-hrow > b{text-align:right;font-size:13px}
+.cu-hmix{grid-column:2/4;display:flex;flex-wrap:wrap;gap:2px 12px;font-size:11.5px;color:var(--muted)}
+.cu-hmix span{display:inline-flex;align-items:center;gap:5px}.cu-hmix b{color:var(--fg);font-weight:600}
+.cu-tip{position:fixed;left:0;top:0;z-index:50;pointer-events:none;background:var(--fg);color:var(--bg);font-size:12px;padding:5px 9px;border-radius:6px;max-width:280px;opacity:0;transition:opacity .1s}
+.cu-tip.on{opacity:1}
+.cu-chart + .cu-detail{margin-top:10px}
+@media (max-width:560px){.cu-hrow{grid-template-columns:1fr 46px}.cu-hbar{grid-column:1/-1;grid-row:2}.cu-hmix{grid-column:1/-1}}
 /* standalone header */
 .cm-sync{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
 .cm-sync button{font:inherit;font-weight:600;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -387,7 +423,7 @@ const MEMBERS = {
 const ORDER = ["Yut", "Tai", "Pe", "Ing", "DREAM"];
 
 const tryLS0 = k => { try { return localStorage.getItem(k); } catch { return null; } };
-const S = { cuWho: tryLS0("bss-cuwho") || "all", cuDays: +(tryLS0("bss-cudays") || 10), cuSort: "due", cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, cuActDate: null, sync: {} };
+const S = { cuWho: tryLS0("bss-cuwho") || "all", cuDays: +(tryLS0("bss-cudays") || 10), cuSort: "due", cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, cuActDate: null, cuWt: null, cuWtView: tryLS0("bss-cuwtview") || "chart", cuCustView: tryLS0("bss-cucustview") || "chart", sync: {} };
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -506,8 +542,9 @@ function vClickup() {
   const byId = Object.fromEntries(C.tasks.map(t => [t.id, t]));
   const custOf = e => { const t = byId[e.task]; return t ? (t.customer || (t.name.includes(" : ") ? t.name.split(" : ")[0] : "ไม่ระบุลูกค้า")) : (e.list ? e.list.replace(/^.*?:s*/, "") : "ไม่ระบุ"); };
   const typeOfE = e => { const t = byId[e.task]; return t ? (t.work_type || "ไม่ระบุ Work Type") : "นอก list กลาง"; };
-  const typeTbl = cuDayTable(timeP, D, T, typeOfE, CU_TYPES);
-  const custTbl = cuDayTable(timeP, D, T, custOf);
+  const typeView = S.cuWtView === "table" ? cuDayTable(timeP, D, T, typeOfE, CU_TYPES) : cuTypeChart(timeP, D, T, typeOfE);
+  const custView = S.cuCustView === "table" ? cuDayTable(timeP, D, T, custOf) : cuCustChart(timeP, custOf, typeOfE);
+  const typeDetail = cuWtDetail(timeP, typeOfE, custOf, "type"), custDetail = cuWtDetail(timeP, typeOfE, custOf, "cust");
   const outList = timeP.filter(e => !e.in_list).reduce((a, e) => a + e.h, 0);
 
   // task table
@@ -553,11 +590,11 @@ function vClickup() {
 
     ${cuProjects(C)}
 
-    <section class="sec"><div class="sec-h"><h2>ชั่วโมงตาม Work Type รายวัน</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${dm(from)} – ${dm(D[D.length - 1])} · ตัวเลขเล็ก = % ของชั่วโมงวันนั้น · “นอก list กลาง” = ลงเวลาใน task ที่ยังไม่ได้อยู่ใน list กลาง จึงไม่รู้ Work Type</p></div>
-      <div class="panel heat-wrap">${typeTbl}</div></section>
+    <section class="sec"><div class="sec-h"><h2>ชั่วโมงตาม Work Type รายวัน</h2>${cuViewSeg("wt", S.cuWtView)}<p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${dm(from)} – ${dm(D[D.length - 1])} · ${S.cuWtView === "table" ? "ตัวเลขเล็ก = % ของชั่วโมงวันนั้น" : "ตัวเลขบนแท่ง = ชม. รวมของวัน · กดแท่ง วันที่ หรือ Work Type เพื่อดูรายละเอียด"} · “นอก list กลาง” = ลงเวลาใน task ที่ยังไม่ได้อยู่ใน list กลาง จึงไม่รู้ Work Type</p></div>
+      <div class="panel ${S.cuWtView === "table" ? "heat-wrap" : "cu-chart"}">${typeView}</div>${typeDetail}</section>
 
-    <section class="sec"><div class="sec-h"><h2>ชั่วโมงตามลูกค้า รายวัน</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${S.cuDays} วันทำงานล่าสุด${outList ? ` · ${+outList.toFixed(1)} ชม. ลงใน task ที่อยู่นอก list กลาง (ใช้ชื่อ list แทนลูกค้า)` : ""}</p></div>
-      <div class="panel heat-wrap">${custTbl}</div></section>
+    <section class="sec"><div class="sec-h"><h2>${S.cuCustView === "table" ? "ชั่วโมงตามลูกค้า รายวัน" : "Top 10 ลูกค้าที่ลงเวลามากสุด"}</h2>${cuViewSeg("cust", S.cuCustView)}<p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${S.cuDays} วันทำงานล่าสุด${outList ? ` · ${+outList.toFixed(1)} ชม. ลงใน task ที่อยู่นอก list กลาง (ใช้ชื่อ list แทนลูกค้า)` : ""}${S.cuCustView === "table" ? "" : " · แท่งแบ่งสีตาม Work Type · กดชื่อลูกค้าหรือสีในแท่งเพื่อดูรายละเอียด"}</p></div>
+      <div class="panel ${S.cuCustView === "table" ? "heat-wrap" : "cu-chart"}">${custView}</div>${custDetail}</section>
 
     <section class="sec"><div class="sec-h"><h3>งานเปิดตาม Status</h3><p>กดเพื่อกรองตารางด้านล่าง</p></div><div class="panel cu-pipe">${pipe}</div></section>
 
@@ -628,6 +665,70 @@ function cuDayTable(es, D, T, keyOf, order = []) {
   const foot = `<tr><th class="who" scope="row">รวม</th>${D.map(d => `<td class="tot num">${d > T ? "–" : dayTot[d] ? +dayTot[d].toFixed(1) : "0"}</td>`).join("")}<td class="tot num">${+all.toFixed(1)}</td><td></td></tr>`;
   return `<table class="heat cu-dt"><thead><tr><th></th>${head}<th>รวม ชม.</th><th>สัดส่วน</th></tr></thead><tbody>${rows}${foot}</tbody></table>`;
 }
+// Work Type colours: fixed slot per type (validated categorical order), greys for "unknown" buckets
+const CU_WT_ORDER = [...CU_TYPES, "ไม่ระบุ Work Type", "นอก list กลาง"];
+const cuWtCol = k => { const i = CU_TYPES.indexOf(k); return i >= 0 ? `var(--wt${i + 1})` : k === "นอก list กลาง" ? "var(--wt-out)" : "var(--wt-un)"; };
+const cuWtSort = (a, b) => { const ia = CU_WT_ORDER.indexOf(a), ib = CU_WT_ORDER.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); };
+const cuH = h => +h.toFixed(1);
+// kind null = static legend (no click)
+function cuLegend(keys, tot, kind) {
+  return `<div class="cu-leg">${keys.map(k => { const inner = `<i style="background:${cuWtCol(k)}"></i>${esc(k)} <b class="num">${cuH(tot[k])}</b>`;
+    return kind ? `<button class="cu-leg-i" data-cuwt="${kind}|${esc(k)}|*" aria-pressed="${S.cuWt === `${kind}|${k}|*`}" data-tip="${esc(k)}: ${cuH(tot[k])} ชม. ทั้งช่วง · กดดูรายละเอียด">${inner}</button>` : `<span class="cu-leg-i">${inner}</span>`; }).join("")}</div>`;
+}
+// stacked column per working day, segments = Work Type
+function cuTypeChart(es, D, T, typeOf) {
+  const m = {}, tot = {}, dayTot = Object.fromEntries(D.map(d => [d, 0]));
+  for (const e of es) { if (!(e.date in dayTot)) continue; const k = typeOf(e); ((m[e.date] ||= {})[k] = (m[e.date]?.[k] || 0) + e.h); tot[k] = (tot[k] || 0) + e.h; dayTot[e.date] += e.h; }
+  const keys = Object.keys(tot).sort(cuWtSort), max = Math.max(1, ...Object.values(dayTot));
+  if (!keys.length) return `<div class="empty">ยังไม่มีการลงเวลาในช่วงนี้</div>`;
+  const PH = 200;
+  const cols = D.map(d => {
+    const segs = keys.filter(k => m[d]?.[k]).map(k => { const h = m[d][k], key = `type|${k}|${d}`;
+      return `<button class="cu-seg" style="height:${Math.max(3, h / max * PH)}px;background:${cuWtCol(k)}" data-cuwt="${esc(key)}" aria-pressed="${S.cuWt === key}" data-tip="${dow(d)} ${dm(d)} · ${esc(k)}: ${+h.toFixed(2)} ชม. (${Math.round(h / dayTot[d] * 100)}%)" aria-label="${dm(d)} ${esc(k)} ${cuH(h)} ชม."></button>`; }).join("");
+    return `<div class="cu-col${d > T ? " off" : ""}"><span class="cu-col-t num">${d > T ? "" : cuH(dayTot[d]) || "0"}</span><div class="cu-stack" style="height:${PH}px">${segs}</div>
+      <button class="cu-col-x" data-cuwt="type|*|${d}" aria-pressed="${S.cuWt === `type|*|${d}`}" data-tip="ดูทุก Work Type ของ ${dm(d)}"><span class="num">${dm(d)}</span><br>${dow(d)}</button></div>`;
+  }).join("");
+  return `${cuLegend(keys, tot, "type")}<div class="cu-cols" style="--n:${D.length}">${cols}</div>`;
+}
+// Top 10 customers, horizontal bar split by Work Type
+function cuCustChart(es, custOf, typeOf) {
+  const m = {}, tot = {}, tt = {};
+  for (const e of es) { const c = custOf(e), k = typeOf(e); ((m[c] ||= {})[k] = (m[c][k] || 0) + e.h); tot[c] = (tot[c] || 0) + e.h; tt[k] = (tt[k] || 0) + e.h; }
+  const top = Object.keys(tot).sort((a, b) => tot[b] - tot[a]).slice(0, 10);
+  if (!top.length) return `<div class="empty">ยังไม่มีการลงเวลาในช่วงนี้</div>`;
+  const keys = [...new Set(top.flatMap(c => Object.keys(m[c])))].sort(cuWtSort), max = tot[top[0]];
+  const rows = top.map((c, i) => {
+    const ks = keys.filter(k => m[c][k]);
+    const segs = ks.map(k => { const h = m[c][k], key = `cust|${c}|*|${k}`;
+      return `<button class="cu-hseg" style="width:${h / max * 100}%;background:${cuWtCol(k)}" data-cuwt="${esc(key)}" aria-pressed="${S.cuWt === key}" data-tip="${esc(c)} · ${esc(k)}: ${+h.toFixed(2)} ชม. (${Math.round(h / tot[c] * 100)}%)" aria-label="${esc(c)} ${esc(k)} ${cuH(h)} ชม."></button>`; }).join("");
+    return `<div class="cu-hrow"><button class="cu-hname" data-cuwt="${esc(`cust|${c}|*`)}" aria-pressed="${S.cuWt === `cust|${c}|*`}" title="${esc(c)}"><span class="num rk">${i + 1}</span>${esc(c)}</button>
+      <div class="cu-hbar">${segs}</div><b class="num">${cuH(tot[c])}</b>
+      <div class="cu-hmix">${ks.map(k => `<span><i style="background:${cuWtCol(k)}"></i>${esc(k)} <b class="num">${cuH(m[c][k])}</b></span>`).join("")}</div></div>`;
+  }).join("");
+  return `${cuLegend(keys, tt, null)}<div class="cu-hrows">${rows}</div>`;
+}
+// entries behind a clicked chart mark: kind|key|date[|type]
+function cuWtDetail(es, typeOf, custOf, kind) {
+  if (!S.cuWt || !S.cuWt.startsWith(kind + "|")) return "";
+  const [, key, date, type] = S.cuWt.split("|"), all = date === "*";
+  const hit = es.filter(e => (all || e.date === date) && (kind === "type" ? key === "*" || typeOf(e) === key : custOf(e) === key && (!type || typeOf(e) === type)))
+    .sort((a, b) => (a.date + a.at).localeCompare(b.date + b.at));
+  const byId = Object.fromEntries(S.cu.tasks.map(t => [t.id, t])), tot = hit.reduce((a, e) => a + e.h, 0);
+  const what = kind === "type" ? (key === "*" ? "ทุก Work Type" : key) : key + (type ? ` · ${type}` : "");
+  const when = all ? `${S.cuDays} วันทำงานล่าสุด` : `${dow(date)} ${dm(date)}`;
+  let body;
+  if (!hit.length) body = `<div class="empty">ไม่มีรายการ</div>`;
+  else if (all) {
+    const g = {};
+    for (const e of hit) { const k = e.task || e.task_name; (g[k] ||= { e, h: 0, days: new Set(), who: new Set() }); g[k].h += e.h; g[k].days.add(e.date); g[k].who.add(e.who); }
+    body = Object.values(g).sort((a, b) => b.h - a.h).map(({ e, h, days, who }) => cuEntryRow(e, byId, `${[...who].join(", ")} · ${days.size} วัน`, h)).join("");
+  } else body = hit.map(e => cuEntryRow(e, byId, `${e.who} ${e.at}${e.end ? "–" + e.end : ""}`, e.h)).join("");
+  const sw = kind === "type" && key !== "*" ? `<i class="cu-sw" style="background:${cuWtCol(key)}"></i>` : type ? `<i class="cu-sw" style="background:${cuWtCol(type)}"></i>` : "";
+  return `<div class="panel cu-detail" data-k="${kind}" style="--mc:${kind === "type" && key !== "*" ? cuWtCol(key) : type ? cuWtCol(type) : "var(--accent)"}"><div class="cu-detail-h"><span class="own">${sw}<b>${esc(what)} · ${when}</b></span>
+    <span class="num">${+tot.toFixed(2)} ชม. · ${hit.length} รายการ${S.cuWho === "all" ? "" : ` · ${esc(S.cuWho)}`}</span><span class="spacer"></span>
+    <button class="x" data-cuwt="" aria-label="ปิดรายละเอียด">×</button></div>${body}</div>`;
+}
+const cuViewSeg = (k, v) => `<div class="seg" role="group" aria-label="มุมมอง"><button data-cuview="${k}|chart" aria-pressed="${v !== "table"}">กราฟ</button><button data-cuview="${k}|table" aria-pressed="${v === "table"}">ตาราง</button></div>`;
 // detail under the daily heatmap: what one person logged on one day (or the whole period when date is "*")
 function cuCellDetail(C, D, T) {
   if (!S.cuCell) return "";
@@ -711,6 +812,10 @@ function wireClickup(root) {
     el.onclick = go; el.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } };
   });
   root.querySelectorAll("[data-cuact]").forEach(el => el.onclick = () => { const v = el.dataset.cuact; S.cuAct = !v || S.cuAct === v ? null : v; render(); });
+  root.querySelectorAll("[data-cuwt]").forEach(el => el.onclick = () => { const v = el.dataset.cuwt; S.cuWt = !v || S.cuWt === v ? null : v; render();
+    const k = v && v.split("|")[0], d = k && $(`.cu-detail[data-k="${k}"]`); if (d) d.scrollIntoView({ block: "nearest", behavior: "smooth" }); });
+  root.querySelectorAll("[data-cuview]").forEach(el => el.onclick = () => { const [k, v] = el.dataset.cuview.split("|");
+    if (k === "wt") { S.cuWtView = v; tryLS("bss-cuwtview", v); } else { S.cuCustView = v; tryLS("bss-cucustview", v); } render(); });
   root.querySelectorAll("[data-cuactd]").forEach(el => el.onclick = () => { S.cuActDate = el.dataset.cuactd; render(); });
   const ad = root.querySelector("#cuactdate"); if (ad) ad.onchange = () => { if (ad.value) { S.cuActDate = ad.value; render(); } };
   root.querySelectorAll("[data-cuactf]").forEach(el => el.onclick = () => { S.cuActF = el.dataset.cuactf; render(); });
@@ -779,6 +884,11 @@ setInterval(async () => {
   try { const j = await (await fetch("/api/sync", { cache: "no-store" })).json(); S.sync = j.state || {}; if (S.sync.running) watchSync(); else if (S.sync.pulled_at && S.sync.pulled_at !== S.cu?.pulled_at) { S.cuLoading = false; loadCU(); } else syncUI(); } catch {}
 }, 5 * 60e3);
 setInterval(syncUI, 60e3);
+
+const tip = document.createElement("div"); tip.className = "cu-tip"; tip.setAttribute("role", "tooltip"); document.body.appendChild(tip);
+document.addEventListener("pointerover", ev => { const t = ev.target.closest?.("[data-tip]"); if (!t) { tip.classList.remove("on"); return; } tip.textContent = t.dataset.tip; tip.classList.add("on"); });
+document.addEventListener("pointermove", ev => { if (!tip.classList.contains("on")) return; const w = tip.offsetWidth, x = Math.min(innerWidth - w - 8, ev.clientX + 12); tip.style.transform = `translate(${Math.max(8, x)}px,${ev.clientY + 16}px)`; });
+document.addEventListener("scroll", () => tip.classList.remove("on"), { passive: true });
 
 loadCU();
 })();
