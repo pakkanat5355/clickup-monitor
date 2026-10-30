@@ -17,7 +17,7 @@ Hosted on Netlify. Data is pulled from ClickUp only when someone presses **Sync 
 | Page | `public/index.html` | Static page. Loads `/api/clickup`. The **Sync ตอนนี้** button calls `POST /api/sync`. |
 | Login | `netlify/edge-functions/auth.mjs` | Puts every path behind one team password (`SITE_PASSWORD`). The login cookie lasts 30 days. Log out at `/logout`. |
 | API | `netlify/functions/api.mjs` | `GET /api/clickup` returns the latest snapshot. `GET /api/sync` returns the sync state. `POST /api/sync` starts a sync, at most once every 2 minutes. |
-| Sync | `netlify/functions/pull-background.mjs` | Background function, about 40 s and about 30 ClickUp calls. Runs `lib/pull.mjs` and saves the result to Netlify Blobs (store `clickup`). |
+| Sync | `netlify/functions/pull-background.mjs` | Background function, about 85 s and about 120 ClickUp calls per sync (14 days of activity). Runs `lib/pull.mjs` and saves the result to Netlify Blobs (store `clickup`). |
 
 ClickUp is only read, never written. The token stays in Netlify environment variables. Snapshot data is never committed: `public/clickup.json` is git-ignored.
 
@@ -34,8 +34,6 @@ ClickUp is only read, never written. The token stays in Netlify environment vari
 
 3. Redeploy so the variables take effect.
 4. Open the site, log in, and press **Sync ตอนนี้** once to make the first snapshot. Press it again whenever you want fresh data.
-
-Scheduled functions only run on the published (production) deploy.
 
 ## Local
 
