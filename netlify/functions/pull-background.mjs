@@ -6,12 +6,13 @@ export default async req => {
   if (!process.env.SYNC_SECRET || req.headers.get("x-sync-secret") !== process.env.SYNC_SECRET) return new Response("forbidden", { status: 403 });
   const { reason = "?" } = await req.json().catch(() => ({}));
   const t = Date.now();
-  await setState({ started_at: new Date().toISOString(), reason, error: null });
+  await setState({ started_at: new Date().toISOString(), reason, error: null, progress: 0 });
   try {
     const prev = await store().get("latest", { type: "json" }).catch(() => null);
-    const out = await pull(process.env.CLICKUP_TOKEN, m => console.log(m), prev);
+    // ~120 ClickUp calls per sync (see README); used only to estimate a progress percentage
+    const out = await pull(process.env.CLICKUP_TOKEN, (m, calls) => { console.log(m); return setState({ progress: Math.min(99, Math.round((calls || 0) / 120 * 100)) }); }, prev);
     await store().setJSON("latest", out);
-    await setState({ finished_at: new Date().toISOString(), pulled_at: out.pulled_at, seconds: +((Date.now() - t) / 1000).toFixed(1), calls: out.calls, error: null });
+    await setState({ finished_at: new Date().toISOString(), pulled_at: out.pulled_at, seconds: +((Date.now() - t) / 1000).toFixed(1), calls: out.calls, error: null, progress: 100 });
   } catch (e) {
     console.error(e);
     await setState({ finished_at: new Date().toISOString(), error: String(e.message || e) });

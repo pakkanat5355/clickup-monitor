@@ -13,7 +13,7 @@
   --bg:#f3f4f7; --panel:#ffffff; --sunk:#e9ebf1; --line:#d9dce5; --fg:#1b1f2c; --muted:#5d6477;
   --accent:#2f4fd1; --accent-ink:#ffffff; --accent-soft:#e3e8fc;
   --ok:#1f8a5b; --ok-soft:#dcf2e7; --warn:#b26a00; --warn-soft:#fbecd2; --crit:#c2362f; --crit-soft:#f9dfdd; --idle:#6c7385; --idle-soft:#e6e8ee;
-  --m-yut:#2f6fd1; --m-tai:#0f8b8d; --m-pe:#b5541c; --m-ing:#8a46b8; --m-dream:#c0386b;
+  --m-yut:#2f6fd1; --m-tai:#0f8b8d; --m-pe:#b5541c; --m-ing:#8a46b8; --m-dream:#c0386b; --m-bank:#2f8f4f;
   --heat0:#eceef3; --heat1:#cfd9f8; --heat2:#97acef; --heat3:#5a78e0; --heat4:#2f4fd1;
   --shadow:0 8px 30px rgba(20,28,60,.14);
   --f-display:"Bai Jamjuree","IBM Plex Sans Thai",system-ui,sans-serif;
@@ -24,14 +24,14 @@
   --bg:#12151d; --panel:#1a1e29; --sunk:#232836; --line:#2e3445; --fg:#e6e9f2; --muted:#9aa2b8;
   --accent:#8fa2ff; --accent-ink:#11152a; --accent-soft:#262f55;
   --ok:#5cc897; --ok-soft:#173829; --warn:#f0b452; --warn-soft:#3b2d14; --crit:#f07a72; --crit-soft:#43201e; --idle:#9aa2b8; --idle-soft:#262b38;
-  --m-yut:#79a6ff; --m-tai:#4cc9c4; --m-pe:#f0955c; --m-ing:#c595f0; --m-dream:#f07fa8;
+  --m-yut:#79a6ff; --m-tai:#4cc9c4; --m-pe:#f0955c; --m-ing:#c595f0; --m-dream:#f07fa8; --m-bank:#5ecb86;
   --heat0:#222736; --heat1:#283668; --heat2:#3a4f9c; --heat3:#5c74d6; --heat4:#8fa2ff;
   --shadow:0 8px 30px rgba(0,0,0,.5); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#12151d; --panel:#1a1e29; --sunk:#232836; --line:#2e3445; --fg:#e6e9f2; --muted:#9aa2b8;
   --accent:#8fa2ff; --accent-ink:#11152a; --accent-soft:#262f55;
   --ok:#5cc897; --ok-soft:#173829; --warn:#f0b452; --warn-soft:#3b2d14; --crit:#f07a72; --crit-soft:#43201e; --idle:#9aa2b8; --idle-soft:#262b38;
-  --m-yut:#79a6ff; --m-tai:#4cc9c4; --m-pe:#f0955c; --m-ing:#c595f0; --m-dream:#f07fa8;
+  --m-yut:#79a6ff; --m-tai:#4cc9c4; --m-pe:#f0955c; --m-ing:#c595f0; --m-dream:#f07fa8; --m-bank:#5ecb86;
   --heat0:#222736; --heat1:#283668; --heat2:#3a4f9c; --heat3:#5c74d6; --heat4:#8fa2ff;
   --shadow:0 8px 30px rgba(0,0,0,.5); color-scheme:dark}
 *{box-sizing:border-box}
@@ -311,8 +311,10 @@ a.cu-link.ttl{color:var(--fg)}
 .cu-flag.crit{background:var(--crit-soft);color:var(--crit)}.cu-flag.warn{background:var(--warn-soft);color:var(--warn)}.cu-flag.idle{background:var(--idle-soft);color:var(--idle)}
 .cu-perf tbody tr{cursor:pointer}
 .cu-perf td{vertical-align:middle}
-.cu-proj tbody tr[data-cuproj]{cursor:pointer}.cu-proj td{vertical-align:middle}
+.cu-proj td{vertical-align:middle}
 .cu-caret{display:inline-block;width:12px;color:var(--muted)}
+.cu-expbtn{border:1px solid var(--line);background:var(--panel);width:28px;height:28px;border-radius:7px;cursor:pointer;color:var(--fg);font-size:13px;line-height:1}
+.cu-expbtn:hover{border-color:var(--accent)}
 tr.cu-drill td{background:var(--sunk);padding:0}tr.cu-drill:hover td{background:var(--sunk)}
 .cu-drill-in{display:grid;gap:12px;padding:14px 16px 16px 34px}
 .cu-drill-meta{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px}
@@ -423,8 +425,9 @@ const MEMBERS = {
   Pe:    { name: "Pe",    full: "Jirat",     st: "JIRAT",    c: "var(--m-pe)" },
   Ing:   { name: "Ing",   full: "Ingkarat",  st: "ING",      c: "var(--m-ing)" },
   DREAM: { name: "DREAM", full: "Ronachai",  st: "DREAM",    c: "var(--m-dream)" },
+  Bank:  { name: "Bank",  full: "Bank",      st: "BANK",     c: "var(--m-bank)" },
 };
-const ORDER = ["Yut", "Tai", "Pe", "Ing", "DREAM"];
+const ORDER = ["Yut", "Tai", "Pe", "Ing", "DREAM", "Bank"];
 
 const tryLS0 = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const S = { cuWho: tryLS0("bss-cuwho") || "all", cuDays: +(tryLS0("bss-cudays") || 10), cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, cuActDate: null, cuWt: null, cuSorts: { t: { k: "due", dir: 1 }, p: { k: "tracked", dir: -1 } }, cuWtView: tryLS0("bss-cuwtview") || "chart", cuCustView: tryLS0("bss-cucustview") || "chart", sync: {} };
@@ -475,6 +478,8 @@ function cuWorkdays(n) {
   for (let d = T; out.length < n; d = addDays(d, -1)) { const w = new Date(d + "T00:00:00Z").getUTCDay(); if (w % 6) out.unshift(d); }
   return out;
 }
+const isWeekend = d => { const w = new Date(d + "T00:00:00Z").getUTCDay(); return w === 0 || w === 6; };
+function cuCalDays(from, to) { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; }
 function cuFlags(t) {
   if (cuCat(t) === "done") return [];
   const T = cuToday(), f = [];
@@ -492,7 +497,7 @@ function vClickup() {
   const C = S.cu;
   if (C === undefined) { loadCU(); return `<div class="panel empty">กำลังโหลดข้อมูลจาก ClickUp…</div>`; }
   if (!C) return `<div class="panel empty">ยังไม่มีข้อมูล กดปุ่ม “Sync ตอนนี้” ด้านบน ใช้เวลาประมาณ 1 นาที</div>`;
-  const T = cuToday(), D = cuWorkdays(S.cuDays), from = D[0];
+  const T = cuToday(), D = cuWorkdays(S.cuDays), from = D[0], Dh = cuCalDays(from, T);
   const team = ORDER;
   const open = C.tasks.filter(t => cuCat(t) !== "done");
   const mineOpen = open.filter(cuWho);
@@ -507,11 +512,12 @@ function vClickup() {
   const perf = team.map(c => {
     const o = open.filter(t => t.who.includes(c));
     const hrsD = D.map(d => C.time.filter(e => e.who === c && e.date === d).reduce((a, e) => a + e.h, 0));
+    const hrsDh = Dh.map(d => C.time.filter(e => e.who === c && e.date === d).reduce((a, e) => a + e.h, 0));
     const past = D.filter(d => d <= T).length, h = hrsD.reduce((a, b) => a + b, 0);
     return { c, open: o.length, prog: o.filter(t => cuCat(t) === "prog").length, wait: o.filter(t => cuCat(t) === "wait").length,
       late: o.filter(t => t.due && t.due < T).length, stale: o.filter(t => cuFlags(t).some(f => /ไม่ขยับ/.test(f[1]))).length,
       done: C.tasks.filter(t => cuCat(t) === "done" && t.closed >= from && t.who.includes(c)).length,
-      h, avg: past ? h / past : 0, zero: D.filter((d, i) => d < T && !hrsD[i]).length, hrsD,
+      h, avg: past ? h / past : 0, zero: D.filter((d, i) => d < T && !hrsD[i]).length, hrsD, hrsDh, hTotal: hrsDh.reduce((a, b) => a + b, 0),
       lastLog: C.time.filter(e => e.who === c).map(e => e.date).sort().pop() || null };
   });
   const perfRows = perf.map(p => {
@@ -524,16 +530,19 @@ function vClickup() {
       <td class="n ${p.zero ? "age-warm" : ""}">${p.zero || "–"}</td><td class="n">${p.lastLog ? dm(p.lastLog) : "ไม่เคยลง"}</td></tr>`;
   }).join("");
 
-  // daily heatmap from ClickUp time entries
-  const head = D.map(d => `<th><span class="num">${dm(d)}</span><br>${dow(d)}</th>`).join("");
-  const heatRows = perf.map(p => `<tr><th class="who" scope="row"><span style="${mc(p.c)};display:inline-flex;gap:6px;align-items:center"><span class="pip" style="margin:0"></span>${p.c}</span></th>${p.hrsD.map((h, i) => {
-    const d = D[i]; if (d > T) return `<td class="hoff">–</td>`;
+  // daily heatmap from ClickUp time entries (Dh = every calendar day in the range, weekends included)
+  const head = Dh.map(d => `<th${isWeekend(d) ? ' class="off"' : ""}><span class="num">${dm(d)}</span><br>${dow(d)}</th>`).join("");
+  const heatRows = perf.map(p => `<tr><th class="who" scope="row"><span style="${mc(p.c)};display:inline-flex;gap:6px;align-items:center"><span class="pip" style="margin:0"></span>${p.c}</span></th>${p.hrsDh.map((h, i) => {
+    const d = Dh[i]; if (d > T) return `<td class="hoff">–</td>`;
     const sel = S.cuCell && S.cuCell.who === p.c && S.cuCell.date === d ? " cu-sel" : "";
     const at = `data-cucell="${p.c}|${d}" role="button" tabindex="0" aria-pressed="${!!sel}"`;
-    if (!h) return d < T ? `<td class="hx cu-cell${sel}" ${at} title="${p.c} ${dm(d)}: ไม่ได้ลงเวลา">✕</td>` : `<td class="h0 cu-cell${sel}" ${at}>0</td>`;
+    if (!h) {
+      if (isWeekend(d)) return `<td class="hoff cu-cell${sel}" ${at} title="${p.c} ${dm(d)}: วันหยุด">–</td>`;
+      return d < T ? `<td class="hx cu-cell${sel}" ${at} title="${p.c} ${dm(d)}: ไม่ได้ลงเวลา">✕</td>` : `<td class="h0 cu-cell${sel}" ${at}>0</td>`;
+    }
     const k = h < 2 ? 1 : h < 4 ? 2 : h < CU_CAP ? 3 : 4;
     return `<td class="h${k} cu-cell${sel}" ${at} title="${p.c} ${dm(d)}: ${+h.toFixed(2)} ชม. · กดดูรายละเอียด"><b>${+h.toFixed(1)}</b><small>${Math.round(h / CU_CAP * 100)}%</small></td>`;
-  }).join("")}<td class="tot num cu-cell${S.cuCell && S.cuCell.who === p.c && S.cuCell.date === "*" ? " cu-sel" : ""}" data-cucell="${p.c}|*" role="button" tabindex="0" title="ดูทั้งช่วง">${+p.h.toFixed(1)}</td></tr>`).join("");
+  }).join("")}<td class="tot num cu-cell${S.cuCell && S.cuCell.who === p.c && S.cuCell.date === "*" ? " cu-sel" : ""}" data-cucell="${p.c}|*" role="button" tabindex="0" title="ดูทั้งช่วง">${+p.hTotal.toFixed(1)}</td></tr>`).join("");
   const cellDetail = cuCellDetail(C, D, T);
 
   // status pipeline of open work
@@ -787,7 +796,7 @@ function cuProjects(C) {
   const rows = ps.map(p => {
     const on = S.cuProj === p.key, focus = S.cuWho !== "all" ? p.by_person.find(x => x.who === S.cuWho) : null;
     const st = [...new Set(p.tasks.map(t => t.status))].join(", ");
-    const head = `<tr class="${p.open ? "" : "closed"}" data-cuproj="${esc(p.key)}" aria-expanded="${on}"><td><span class="cu-caret">${on ? "▾" : "▸"}</span> <span class="ttl">${esc(p.name)}</span>
+    const head = `<tr class="${p.open ? "" : "closed"}" aria-expanded="${on}"><td><span class="ttl">${esc(p.name)}</span>
         <div class="det">${[p.customer, p.code || p.key].filter(Boolean).map(esc).join(" · ")}</div></td>
       <td>${p.who.map(w => `<span class="own" style="${mc(w)}">${av(w)}${esc(w)}</span>`).join(" ") || "–"}</td>
       <td style="font-size:12.5px">${esc(st)}</td>
@@ -795,7 +804,8 @@ function cuProjects(C) {
       <td class="n">${fmt(p.tracked_h)}${focus ? `<div class="det">${esc(S.cuWho)} ${fmt(focus.h)}</div>` : ""}</td>
       <td>${bar(p.tracked_h, p.est_h)}</td>
       <td class="n">${p.est_h ? fmt(p.est_h - p.tracked_h) : "–"}</td>
-      <td class="n">${dmy(p.last_log)}</td></tr>`;
+      <td class="n">${dmy(p.last_log)}</td>
+      <td class="n"><button class="cu-expbtn" data-cuproj="${esc(p.key)}" aria-expanded="${on}" aria-label="${on ? "ย่อ" : "ขยาย"}" title="${on ? "ย่อ" : "ขยาย"}">${on ? "▾" : "▸"}</button></td></tr>`;
     if (!on) return head;
     const max = Math.max(1, ...p.by_person.map(x => x.h));
     const people = p.by_person.map(x => `<div class="cu-pp" style="${mc(x.who)}">
@@ -804,7 +814,7 @@ function cuProjects(C) {
         <div class="cu-pp-t">${x.tasks.map(t => `<span>${esc(t.name)} <b class="num">${fmt(t.h)}</b></span>`).join("")}</div></div>`).join("")
       || `<div class="empty">ทีมยังไม่ได้ลงเวลาใน ClickUp สำหรับโปรเจกต์นี้</div>`;
     const links = p.tasks.map(t => `<a class="cu-link" href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.name)}</a> ${pill(t.status)}${t.due ? ` <span class="note-ro">Due ${dm(t.due)}</span>` : ""}`).join("<br>");
-    return head + `<tr class="cu-drill"><td colspan="8"><div class="cu-drill-in">
+    return head + `<tr class="cu-drill"><td colspan="9"><div class="cu-drill-in">
         <div class="cu-drill-meta"><span>Estimate: <b>${p.est_h ? fmt(p.est_h) + " ชม." : "ยังไม่มี"}</b>${p.est_src ? ` <span class="note-ro">(${esc(p.est_src)})</span>` : ""}</span>
           <span>ลงเวลาครั้งแรก ${dmy(p.first_log)} · ล่าสุด ${dmy(p.last_log)}</span>
           <span class="note-ro">นับเวลาจาก: task ใน list กลาง${p.lists.length ? " + list " + p.lists.map(esc).join(", ") : ""}</span></div>
@@ -812,11 +822,11 @@ function cuProjects(C) {
   }).join("");
   const nDone = all.filter(p => !p.open).length;
   const over = ps.filter(p => p.est_h && p.tracked_h > p.est_h).length, noEst = ps.filter(p => !p.est_h).length;
-  return `<section class="sec"><div class="sec-h"><h2>Project: เวลาที่ลงเทียบ Estimate</h2><p>เฉพาะงาน Work Type = Project ใน list กลาง รวมเป็นรายโปรเจกต์ตาม Job ID · นับเวลาของทีม BSS ตั้งแต่ ${dm(C.proj_since)}/${C.proj_since.slice(2, 4)} · กดแถวเพื่อดูรายคน · กดหัวคอลัมน์เพื่อเรียง</p></div>
+  return `<section class="sec"><div class="sec-h"><h2>Project: เวลาที่ลงเทียบ Estimate</h2><p>เฉพาะงาน Work Type = Project ใน list กลาง รวมเป็นรายโปรเจกต์ตาม Job ID · นับเวลาของทีม BSS ตั้งแต่ ${dm(C.proj_since)}/${C.proj_since.slice(2, 4)} · กดปุ่มขยายเพื่อดูรายคน · กดหัวคอลัมน์เพื่อเรียง</p></div>
     <div class="ptools"><span class="note-ro">${ps.length} โปรเจกต์ · เกิน estimate <b style="color:${over ? "var(--crit)" : "inherit"}">${over}</b> · ยังไม่มี estimate <b>${noEst}</b></span>
       <label class="chk"><input type="checkbox" id="cuprojdone" ${S.cuProjDone ? "checked" : ""}> รวมที่ปิดแล้ว (${nDone})</label></div>
-    <div class="panel tbl-wrap"><table class="tasks cu-proj"><thead><tr>${cuTh("p", "name", "โปรเจกต์")}${cuTh("p", "who", "ผู้รับผิดชอบ")}${cuTh("p", "status", "Status")}${cuTh("p", "est", "Estimate ชม.", -1, true)}${cuTh("p", "tracked", "ลงแล้ว ชม.", -1, true)}${cuTh("p", "pct", "ใช้ไป", -1)}${cuTh("p", "remain", "คงเหลือ", 1, true)}${cuTh("p", "last", "ลงล่าสุด", -1, true)}</tr></thead>
-      <tbody>${rows || `<tr><td colspan="8" class="empty">ไม่มีโปรเจกต์ตามเงื่อนไขนี้</td></tr>`}</tbody></table></div></section>`;
+    <div class="panel tbl-wrap"><table class="tasks cu-proj"><thead><tr>${cuTh("p", "name", "โปรเจกต์")}${cuTh("p", "who", "ผู้รับผิดชอบ")}${cuTh("p", "status", "Status")}${cuTh("p", "est", "Estimate ชม.", -1, true)}${cuTh("p", "tracked", "ลงแล้ว ชม.", -1, true)}${cuTh("p", "pct", "ใช้ไป", -1)}${cuTh("p", "remain", "คงเหลือ", 1, true)}${cuTh("p", "last", "ลงล่าสุด", -1, true)}<th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="9" class="empty">ไม่มีโปรเจกต์ตามเงื่อนไขนี้</td></tr>`}</tbody></table></div></section>`;
 }
 function wireClickup(root) {
   root.querySelectorAll("[data-cucell]").forEach(el => {
@@ -868,7 +878,7 @@ function syncUI() {
   $("#asof").textContent = pulled ? `ข้อมูล ณ ${new Date(pulled).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · กด Sync ตอนนี้เพื่อดึงใหม่` : "ยังไม่มีข้อมูล กด Sync ตอนนี้";
   box.classList.toggle("busy", !!st.running);
   btn.disabled = !!st.running || !!st.local;
-  btn.lastChild.textContent = st.running ? "กำลัง sync…" : "Sync ตอนนี้";
+  btn.lastChild.textContent = st.running ? `กำลัง sync…${st.progress != null ? ` ${st.progress}%` : ""}` : "Sync ตอนนี้";
   txt.innerHTML = st.local ? "โหมดไฟล์ในเครื่อง" : st.error ? `<span class="err" title="${esc(st.error)}">sync ล่าสุดไม่สำเร็จ</span>` : pulled ? esc(ago(pulled)) : "";
 }
 let poll = null;
