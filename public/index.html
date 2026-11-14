@@ -880,6 +880,7 @@ function buildClickupCharts() {
   Chart.defaults.font.family = "Kanit, sans-serif";
   const fg = cuCssVar("--fg"), muted = cuCssVar("--muted"), line = cuCssVar("--line"), panel = cuCssVar("--panel"), accentInk = cuCssVar("--accent-ink");
   Chart.defaults.color = muted;
+  Chart.defaults.animation = false; // every render() rebuilds every chart from scratch (same pattern as the rest of this SPA) — skip the grow-in animation so that feels instant, not like a reload
   const tooltipBase = { backgroundColor: panel, titleColor: fg, bodyColor: fg, borderColor: line, borderWidth: 1, padding: 10, titleFont: { weight: 600 }, bodyFont: { weight: 500 }, boxPadding: 4 };
   const team = ORDER;
   const dowLabel = d => `${dow(d)} ${+d.slice(8, 10)}`;
@@ -1020,8 +1021,10 @@ function buildClickupCharts() {
 
 function render() {
   const app = $("#app");
+  const scrollY = window.scrollY; // every interaction replaces the whole page's HTML, so restore scroll or it jumps to the top
   app.innerHTML = vClickup();
   if (S.cu) { wireClickup(app); buildClickupCharts(); } else cuDestroyCharts();
+  window.scrollTo(0, scrollY);
 }
 
 /* ---------- data + sync ---------- */
