@@ -4,3 +4,4 @@ node_modules/
 *.token
 # snapshot holds customer/task data: never commit it
 public/clickup.json
+.mockup-tmp/
