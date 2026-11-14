@@ -546,6 +546,7 @@ function vClickup() {
   const mineOpen = open.filter(cuWho);
   const closedP = C.tasks.filter(t => cuCat(t) === "done" && t.closed && t.closed >= from && cuWho(t));
   const timeP = C.time.filter(e => e.date >= from && e.date <= T && (S.cuWho === "all" ? team.includes(e.who) : e.who === S.cuWho));
+  const timeAll = C.time.filter(e => e.date >= from && e.date <= T && team.includes(e.who)); // Performance รายคน ignores the คน filter above — always every person
   const hP = timeP.reduce((a, e) => a + e.h, 0);
   const late = mineOpen.filter(t => t.due && t.due < T).length, stale = mineOpen.filter(t => cuFlags(t).some(f => /ไม่ขยับ/.test(f[1]))).length;
   const nobody = open.filter(t => !t.who.length).length;
@@ -586,12 +587,12 @@ function vClickup() {
   const byId = Object.fromEntries(C.tasks.map(t => [t.id, t]));
   const custOf = e => { const t = byId[e.task]; return t ? (t.customer || (t.name.includes(" : ") ? t.name.split(" : ")[0] : "ไม่ระบุลูกค้า")) : (e.list ? e.list.replace(/^.*?:s*/, "") : "ไม่ระบุ"); };
   const typeOfE = e => { const t = byId[e.task]; return t ? (t.work_type || "ไม่ระบุ Work Type") : "นอก list กลาง"; };
-  const typeDetail = cuWtDetail(timeP, typeOfE, custOf, "type"), custDetail = cuWtDetail(timeP, typeOfE, custOf, "cust"), personWtDetail = cuWtDetail(timeP, typeOfE, custOf, "person");
+  const typeDetail = cuWtDetail(timeP, typeOfE, custOf, "type"), custDetail = cuWtDetail(timeP, typeOfE, custOf, "cust"), personWtDetail = cuWtDetail(timeAll, typeOfE, custOf, "person");
   const outList = timeP.filter(e => !e.in_list).reduce((a, e) => a + e.h, 0);
 
-  // team total by Work Type (for the strip above the Performance รายคน chart)
+  // team total by Work Type (for the strip above the Performance รายคน chart) — always every person, not filtered by the คน selector
   const wtTotal = {};
-  for (const e of timeP) { const k = typeOfE(e); wtTotal[k] = (wtTotal[k] || 0) + e.h; }
+  for (const e of timeAll) { const k = typeOfE(e); wtTotal[k] = (wtTotal[k] || 0) + e.h; }
   const wtGrand = +Object.values(wtTotal).reduce((a, b) => a + b, 0).toFixed(2);
   const wtKeys = Object.keys(wtTotal).sort(cuWtSort);
   const pwtTotalHtml = !wtGrand ? `<div class="empty">ยังไม่มีข้อมูลในช่วงนี้</div>` : `
@@ -600,7 +601,7 @@ function vClickup() {
     <div class="legend" style="margin-top:10px">${wtKeys.map(k => `<span><i style="background:${cuWtCol(k)}"></i>${esc(k)} <b class="num">${Math.round(wtTotal[k] / wtGrand * 100)}%</b> <span class="num" style="opacity:.7">(${cuH(wtTotal[k])} ชม.)</span></span>`).join("")}</div>`;
 
   // stash everything the Chart.js builders need; render() calls buildClickupCharts() right after this HTML is injected
-  S._chartCtx = { D, T, perf, timeP, typeOfE, custOf };
+  S._chartCtx = { D, T, perf, timeP, timeAll, typeOfE, custOf };
 
   // task table
   let rows = (S.cuShowDone ? C.tasks.filter(t => cuCat(t) !== "done" || t.closed >= from) : open).filter(cuWho)
@@ -876,7 +877,7 @@ function buildClickupCharts() {
   cuDestroyCharts();
   const ctx = S._chartCtx;
   if (!ctx || !document.getElementById("cuChartHeatmap")) return;
-  const { D, T, perf, timeP, typeOfE, custOf } = ctx;
+  const { D, T, perf, timeP, timeAll, typeOfE, custOf } = ctx;
   Chart.defaults.font.family = "Kanit, sans-serif";
   const fg = cuCssVar("--fg"), muted = cuCssVar("--muted"), line = cuCssVar("--line"), panel = cuCssVar("--panel"), accentInk = cuCssVar("--accent-ink");
   Chart.defaults.color = muted;
@@ -889,17 +890,18 @@ function buildClickupCharts() {
   const wtLegendEl = $("#cuWtLegend"); if (wtLegendEl) wtLegendEl.innerHTML = legendHtml;
   const custLegendEl = $("#cuCustLegend"); if (custLegendEl) custLegendEl.innerHTML = legendHtml;
 
-  // Performance รายคน — hours by Work Type, per person
+  // Performance รายคน — hours by Work Type, per person. Always every person, ignores the คน filter above.
   const pwtCanvas = document.getElementById("cuChartPersonWt");
   if (pwtCanvas) {
+    const wtKeysAll = [...new Set(timeAll.map(typeOfE))].sort(cuWtSort);
     const personWt = {};
-    for (const e of timeP) { const k = typeOfE(e); (personWt[e.who] ||= {})[k] = (personWt[e.who][k] || 0) + e.h; }
+    for (const e of timeAll) { const k = typeOfE(e); (personWt[e.who] ||= {})[k] = (personWt[e.who][k] || 0) + e.h; }
     _cuCharts.personWt = new Chart(pwtCanvas, {
       type: "bar",
-      data: { labels: team, datasets: wtKeys.map(k => ({ label: k, data: team.map(c => personWt[c]?.[k] || 0), backgroundColor: cuWtColC(k), borderRadius: 3, borderSkipped: false })) },
+      data: { labels: team, datasets: wtKeysAll.map(k => ({ label: k, data: team.map(c => personWt[c]?.[k] || 0), backgroundColor: cuWtColC(k), borderRadius: 3, borderSkipped: false })) },
       options: {
         indexAxis: "y", responsive: true, maintainAspectRatio: false,
-        onClick: (ev, els) => { if (!els.length) return; const { datasetIndex, index } = els[0]; const type = wtKeys[datasetIndex], c = team[index];
+        onClick: (ev, els) => { if (!els.length) return; const { datasetIndex, index } = els[0]; const type = wtKeysAll[datasetIndex], c = team[index];
           const key = `person|${c}|*|${type}`; S.cuWt = S.cuWt === key ? null : key; render(); },
         scales: {
           x: { stacked: true, grid: { color: line }, border: { display: false }, ticks: { callback: v => v + " ชม." } },
