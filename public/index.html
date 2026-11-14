@@ -910,6 +910,17 @@ function buildClickupCharts() {
         plugins: { legend: { display: false }, tooltip: { ...tooltipBase, callbacks: { label: c => `${c.dataset.label}: ${c.raw.toFixed(1)} ชม.` } } },
       },
     });
+    // Chart.js only calls options.onClick for clicks inside the plot area, never over the axis labels —
+    // so the "click the person's name" affordance needs its own plain listener on the canvas.
+    pwtCanvas.onclick = ev => {
+      const chart = _cuCharts.personWt; if (!chart || ev.offsetX > chart.chartArea.left) return;
+      const c = team[Math.round(chart.scales.y.getValueForPixel(ev.offsetY))]; if (!c) return;
+      const key = `person|${c}|*`; S.cuWt = S.cuWt === key ? null : key; render();
+    };
+    pwtCanvas.onmousemove = ev => {
+      const chart = _cuCharts.personWt; if (!chart) return;
+      pwtCanvas.style.cursor = ev.offsetX <= chart.chartArea.left && ev.offsetY >= chart.chartArea.top && ev.offsetY <= chart.chartArea.bottom ? "pointer" : "";
+    };
   }
 
   // daily hours heatmap — green = at/over the target, amber = under target, red = no time logged, grey = weekend/future
