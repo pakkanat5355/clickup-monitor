@@ -587,8 +587,17 @@ function vClickup() {
 
   // hours per day by Work Type and by customer (same person filter + period as the heatmap)
   const byId = Object.fromEntries(C.tasks.map(t => [t.id, t]));
-  const custOf = e => { const t = byId[e.task]; return t ? (t.customer || (t.name.includes(" : ") ? t.name.split(" : ")[0] : "ไม่ระบุลูกค้า")) : (e.list ? e.list.replace(/^.*?:s*/, "") : "ไม่ระบุ"); };
+  const custOf = e => { const t = byId[e.task]; return t ? (t.customer || (t.name.includes(" : ") ? t.name.split(" : ")[0] : "ไม่ระบุลูกค้า")) : (e.list ? e.list.replace(/^.*?:\s*/, "") : "ไม่ระบุ"); };
   const typeOfE = e => { const t = byId[e.task]; return t ? (t.work_type || "ไม่ระบุ Work Type") : "นอก list กลาง"; };
+  const projByTask = {}, projByList = {}, projName = {};
+  for (const p of C.projects || []) { projName[p.key] = p.name; for (const t of p.tasks) projByTask[t.id] = p.key; for (const l of p.lists) projByList[l] = p.key; }
+  const projOf = e => projByTask[e.task] || (e.list && projByList[e.list]) || null;
+  const supOf = e => typeOfE(e) === "Ticket Case" ? (e.task || e.task_name) : null;
+  const supName = Object.fromEntries(timeP.filter(supOf).map(e => [supOf(e), e.task_name]));
+  const tops = { projOf, supOf, projName, supName };
+  const projDetail = cuWtDetail(timeP, typeOfE, custOf, "proj", tops), supDetail = cuWtDetail(timeP, typeOfE, custOf, "sup", tops);
+  const projH = timeP.filter(projOf).reduce((a, e) => a + e.h, 0), supH = timeP.filter(supOf).reduce((a, e) => a + e.h, 0);
+  const custStrip = cuWtStrip(timeP, typeOfE, S.cuWho === "all" ? "รวมทั้งทีม" : "รวมของ " + S.cuWho);
   const typeDetail = cuWtDetail(timeP, typeOfE, custOf, "type"), custDetail = cuWtDetail(timeP, typeOfE, custOf, "cust"), personWtDetail = cuWtDetail(timeAll, typeOfE, custOf, "person");
   const outList = timeP.filter(e => !e.in_list).reduce((a, e) => a + e.h, 0);
 
@@ -597,7 +606,7 @@ function vClickup() {
   const wtdTotalHtml = cuWtStrip(timeP, typeOfE, S.cuWho === "all" ? "รวมทั้งทีม" : "รวมของ " + S.cuWho);
 
   // stash everything the Chart.js builders need; render() calls buildClickupCharts() right after this HTML is injected
-  S._chartCtx = { D, T, perf, timeP, timeAll, typeOfE, custOf };
+  S._chartCtx = { D, T, perf, timeP, timeAll, typeOfE, custOf, ...tops };
 
   // task table
   let rows = (S.cuShowDone ? C.tasks.filter(t => cuCat(t) !== "done" || t.closed >= from) : open).filter(cuWho)
@@ -651,8 +660,14 @@ function vClickup() {
     <section class="sec"><div class="sec-h"><h2>ชั่วโมงตาม Work Type รายวัน</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${dm(from)} – ${dm(to)} · กดแท่งสีเพื่อดูรายละเอียด · “นอก list กลาง” = ลงเวลาใน task ที่ยังไม่ได้อยู่ใน list กลาง จึงไม่รู้ Work Type</p></div>
       <div class="panel chart-panel"><div class="pwt-total">${wtdTotalHtml}</div><div class="chart-box" style="height:300px"><canvas id="cuChartWtDaily"></canvas></div></div>${typeDetail}</section>
 
-    <section class="sec"><div class="sec-h"><h2>Top ลูกค้าที่ลงเวลามากสุด</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${cuPeriodLabel()}${outList ? ` · ${+outList.toFixed(1)} ชม. ลงใน task ที่อยู่นอก list กลาง (ใช้ชื่อ list แทนลูกค้า)` : ""} · แท่งแบ่งสีตาม Work Type · กดแท่งสีเพื่อดูรายละเอียด</p></div>
-      <div class="panel chart-panel"><div class="legend" id="cuCustLegend"></div><div class="chart-box" style="height:320px"><canvas id="cuChartCustomers"></canvas></div></div>${custDetail}</section>
+    <section class="sec"><div class="sec-h"><h2>Top ลูกค้าที่ลงเวลามากสุด</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${cuPeriodLabel()}${outList ? ` · ${+outList.toFixed(1)} ชม. ลงใน task ที่อยู่นอก list กลาง (ใช้ชื่อ list แทนลูกค้า)` : ""} · แท่งแบ่งสีตาม Work Type · ตัวเลขท้ายแท่ง = ชม. · % ของเวลาทั้งหมด · กดแท่งสีเพื่อดูรายละเอียด</p></div>
+      <div class="panel chart-panel"><div class="pwt-total">${custStrip}</div><div class="chart-box" style="height:340px"><canvas id="cuChartCustomers"></canvas></div></div>${custDetail}</section>
+
+    <section class="sec"><div class="sec-h"><h2>Top Project ที่ลงเวลามากสุด</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${cuPeriodLabel()} · Project ใน list กลาง + เวลาที่ลงใน list ของโปรเจกต์ · รวม ${cuH(projH)} ชม. · % = สัดส่วนของชั่วโมง Project ทั้งหมด · กดแท่งเพื่อดูรายละเอียด</p></div>
+      <div class="panel chart-panel">${projH ? `<div class="chart-box" style="height:320px"><canvas id="cuChartTopProj"></canvas></div>` : `<div class="empty">ยังไม่มีการลงเวลา Project ในช่วงนี้</div>`}</div>${projDetail}</section>
+
+    <section class="sec"><div class="sec-h"><h2>Top Support ที่ลงเวลามากสุด</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${cuPeriodLabel()} · task ที่ Work Type = Ticket Case · รวม ${cuH(supH)} ชม. · % = สัดส่วนของชั่วโมง Support ทั้งหมด · กดแท่งเพื่อดูรายละเอียด</p></div>
+      <div class="panel chart-panel">${supH ? `<div class="chart-box" style="height:320px"><canvas id="cuChartTopSup"></canvas></div>` : `<div class="empty">ยังไม่มีการลงเวลา Support ในช่วงนี้</div>`}</div>${supDetail}</section>
 
     <section class="sec"><div class="sec-h"><h3>งานเปิดตาม Status</h3><p>กดเพื่อกรองตารางด้านล่าง</p></div><div class="panel cu-pipe">${pipe}</div></section>
 
@@ -723,16 +738,18 @@ const cuWtColC = k => { const i = CU_TYPES.indexOf(k); return i >= 0 ? cuCssVar(
 const cuWtSort = (a, b) => { const ia = CU_WT_ORDER.indexOf(a), ib = CU_WT_ORDER.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); };
 const cuH = h => +h.toFixed(1);
 // entries behind a clicked chart mark: kind|key|date[|type]
-function cuWtDetail(es, typeOf, custOf, kind) {
+function cuWtDetail(es, typeOf, custOf, kind, x = {}) {
   if (!S.cuWt || !S.cuWt.startsWith(kind + "|")) return "";
   const [, key, date, type] = S.cuWt.split("|"), all = date === "*";
   const hit = es.filter(e => (all || e.date === date) &&
       (kind === "type" ? (key === "*" || typeOf(e) === key)
       : kind === "cust" ? (custOf(e) === key && (!type || typeOf(e) === type))
+      : kind === "proj" ? x.projOf(e) === key
+      : kind === "sup" ? x.supOf(e) === key
       : (e.who === key && (!type || typeOf(e) === type))))
     .sort((a, b) => (a.date + a.at).localeCompare(b.date + b.at));
   const byId = Object.fromEntries(S.cu.tasks.map(t => [t.id, t])), tot = hit.reduce((a, e) => a + e.h, 0);
-  const what = kind === "type" ? (key === "*" ? "ทุก Work Type" : key) : key + (type ? ` · ${type}` : "");
+  const what = kind === "type" ? (key === "*" ? "ทุก Work Type" : key) : kind === "proj" ? x.projName[key] || key : kind === "sup" ? x.supName[key] || key : key + (type ? ` · ${type}` : "");
   const when = all ? cuPeriodLabel() : `${dow(date)} ${dm(date)}`;
   let body;
   if (!hit.length) body = `<div class="empty">ไม่มีรายการ</div>`;
@@ -885,7 +902,7 @@ function buildClickupCharts() {
   cuDestroyCharts();
   const ctx = S._chartCtx;
   if (!ctx || !document.getElementById("cuChartHeatmap")) return;
-  const { D, T, perf, timeP, timeAll, typeOfE, custOf } = ctx;
+  const { D, T, perf, timeP, timeAll, typeOfE, custOf, projOf, supOf, projName, supName } = ctx;
   Chart.defaults.font.family = "Kanit, sans-serif";
   const fg = cuCssVar("--fg"), muted = cuCssVar("--muted"), line = cuCssVar("--line"), panel = cuCssVar("--panel"), accentInk = cuCssVar("--accent-ink");
   Chart.defaults.color = muted;
@@ -1024,12 +1041,43 @@ function buildClickupCharts() {
     });
   }
 
+  // "12.5 ชม. · 34%" at the end of each horizontal bar (totals = per-row hours, grand = denominator for %)
+  const endLabels = (totals, grand) => ({ id: "cuEnd", afterDatasetsDraw(chart) {
+    const { ctx: g, scales: { x, y } } = chart; g.save(); g.fillStyle = fg; g.font = "600 12px Kanit, sans-serif"; g.textBaseline = "middle";
+    totals.forEach((v, i) => { if (v) g.fillText(`${cuH(v)} ชม. · ${Math.round(v / grand * 100)}%`, x.getPixelForValue(v) + 6, y.getPixelForValue(i)); });
+    g.restore(); } });
+  const short = (t, n = 42) => t.length > n ? t.slice(0, n - 1) + "…" : t;
+  // single-series Top 10 bar (Project / Support)
+  const topBar = (canvas, keyOf, nameOf, color, kind, chartKey) => {
+    const tot = {}; for (const e of timeP) { const k = keyOf(e); if (k) tot[k] = (tot[k] || 0) + e.h; }
+    const grand = Object.values(tot).reduce((a, b) => a + b, 0), keys = Object.keys(tot).sort((a, b) => tot[b] - tot[a]).slice(0, 10), vals = keys.map(k => tot[k]);
+    _cuCharts[chartKey] = new Chart(canvas, {
+      type: "bar",
+      data: { labels: keys.map(k => short(nameOf(k) || k)), datasets: [{ data: vals, backgroundColor: color, borderRadius: 3, borderSkipped: false, maxBarThickness: 22 }] },
+      options: {
+        indexAxis: "y", responsive: true, maintainAspectRatio: false, layout: { padding: { right: 8 } },
+        onClick: (ev, els) => { if (!els.length) return; const key = `${kind}|${keys[els[0].index]}|*`; S.cuWt = S.cuWt === key ? null : key; render(); },
+        scales: {
+          x: { grid: { color: line }, border: { display: false }, suggestedMax: Math.max(...vals) * 1.25, ticks: { callback: v => v + " ชม." } },
+          y: { grid: { display: false }, border: { display: false }, ticks: { color: fg, font: { weight: 500 } } },
+        },
+        plugins: { legend: { display: false }, tooltip: { ...tooltipBase, callbacks: { title: items => nameOf(keys[items[0].dataIndex]) || keys[items[0].dataIndex],
+          label: c => `${c.raw.toFixed(1)} ชม. (${Math.round(c.raw / grand * 100)}%)` } } },
+      },
+      plugins: [endLabels(vals, grand)],
+    });
+  };
+  const tpCanvas = document.getElementById("cuChartTopProj");
+  if (tpCanvas) topBar(tpCanvas, projOf, k => projName[k], cuCssVar("--wt1"), "proj", "topProj");
+  const tsCanvas = document.getElementById("cuChartTopSup");
+  if (tsCanvas) topBar(tsCanvas, supOf, k => supName[k], cuCssVar("--wt2"), "sup", "topSup");
+
   // Top ลูกค้าที่ลงเวลามากสุด — stacked horizontal bar
   const custCanvas = document.getElementById("cuChartCustomers");
   if (custCanvas) {
     const custTot = {}, custByType = {};
     for (const e of timeP) { const cN = custOf(e), k = typeOfE(e); custTot[cN] = (custTot[cN] || 0) + e.h; (custByType[cN] ||= {})[k] = (custByType[cN][k] || 0) + e.h; }
-    const topCust = Object.keys(custTot).sort((a, b) => custTot[b] - custTot[a]).slice(0, 10);
+    const topCust = Object.keys(custTot).sort((a, b) => custTot[b] - custTot[a]).slice(0, 10), custGrand = Object.values(custTot).reduce((a, b) => a + b, 0);
     const custKeys = [...new Set(topCust.flatMap(c => Object.keys(custByType[c])))].sort(cuWtSort);
     _cuCharts.customers = new Chart(custCanvas, {
       type: "bar",
@@ -1039,11 +1087,14 @@ function buildClickupCharts() {
         onClick: (ev, els) => { if (!els.length) return; const { datasetIndex, index } = els[0]; const type = custKeys[datasetIndex], name = topCust[index];
           const key = `cust|${name}|*|${type}`; S.cuWt = S.cuWt === key ? null : key; render(); },
         scales: {
-          x: { stacked: true, grid: { color: line }, border: { display: false }, ticks: { callback: v => v + " ชม." } },
+          x: { stacked: true, grid: { color: line }, border: { display: false }, suggestedMax: custTot[topCust[0]] * 1.25, ticks: { callback: v => v + " ชม." } },
           y: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { color: fg, font: { weight: 500 } } },
         },
-        plugins: { legend: { display: false }, tooltip: { ...tooltipBase, callbacks: { label: c => `${c.dataset.label}: ${c.raw.toFixed(1)} ชม.` } } },
+        plugins: { legend: { display: false }, tooltip: { ...tooltipBase, callbacks: {
+          label: c => { const t = custTot[topCust[c.dataIndex]]; return `${c.dataset.label}: ${c.raw.toFixed(1)} ชม. (${Math.round(c.raw / t * 100)}% ของลูกค้านี้)`; },
+          footer: items => { const t = custTot[topCust[items[0].dataIndex]]; return `รวม ${t.toFixed(1)} ชม. · ${Math.round(t / custGrand * 100)}% ของเวลาทั้งหมด`; } } } },
       },
+      plugins: [endLabels(topCust.map(c => custTot[c]), custGrand)],
     });
   }
 }
