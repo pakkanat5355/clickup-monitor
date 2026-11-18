@@ -467,9 +467,10 @@ const MEMBERS = {
   Bank:  { name: "Bank",  full: "Bank",      st: "BANK",     c: "var(--m-bank)" },
 };
 const ORDER = ["Yut", "Tai", "Pe", "Ing", "DREAM", "Bank"];
+const cuTeam = () => S.cuHideBank ? ORDER.filter(c => c !== "Bank") : ORDER;
 
 const tryLS0 = k => { try { return localStorage.getItem(k); } catch { return null; } };
-const S = { cuWho: tryLS0("bss-cuwho") || "all", cuPeriod: tryLS0("bss-cuperiod") || "week", cuAnchor: null, cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, cuActDate: null, cuWt: null, cuSorts: { t: { k: "due", dir: 1 }, p: { k: "tracked", dir: -1 } }, sync: {} };
+const S = { cuHideBank: tryLS0("bss-cuhidebank") !== "0", cuWho: tryLS0("bss-cuwho") || "all", cuPeriod: tryLS0("bss-cuperiod") || "week", cuAnchor: null, cuQ: "", cuSt: "", cuFlagOnly: false, cuShowDone: false, cuProj: null, cuProjDone: false, cuCell: null, cuAct: null, cuActDate: null, cuWt: null, cuSorts: { t: { k: "due", dir: 1 }, p: { k: "tracked", dir: -1 } }, sync: {} };
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -541,7 +542,8 @@ function vClickup() {
   if (C === undefined) { loadCU(); return `<div class="panel empty">กำลังโหลดข้อมูลจาก ClickUp…</div>`; }
   if (!C) return `<div class="panel empty">ยังไม่มีข้อมูล กดปุ่ม “Sync ตอนนี้” ด้านบน ใช้เวลาประมาณ 1 นาที</div>`;
   const T = cuToday(), anchor = S.cuAnchor || T, { from, to } = cuPeriodRange(S.cuPeriod, anchor), D = cuCalDays(from, to);
-  const team = ORDER;
+  if (S.cuHideBank && S.cuWho === "Bank") S.cuWho = "all";
+  const team = cuTeam();
   const open = C.tasks.filter(t => cuCat(t) !== "done");
   const mineOpen = open.filter(cuWho);
   const closedP = C.tasks.filter(t => cuCat(t) === "done" && t.closed && t.closed >= from && cuWho(t));
@@ -591,14 +593,8 @@ function vClickup() {
   const outList = timeP.filter(e => !e.in_list).reduce((a, e) => a + e.h, 0);
 
   // team total by Work Type (for the strip above the Performance รายคน chart) — always every person, not filtered by the คน selector
-  const wtTotal = {};
-  for (const e of timeAll) { const k = typeOfE(e); wtTotal[k] = (wtTotal[k] || 0) + e.h; }
-  const wtGrand = +Object.values(wtTotal).reduce((a, b) => a + b, 0).toFixed(2);
-  const wtKeys = Object.keys(wtTotal).sort(cuWtSort);
-  const pwtTotalHtml = !wtGrand ? `<div class="empty">ยังไม่มีข้อมูลในช่วงนี้</div>` : `
-    <div class="pwt-total-h"><span>รวมทั้งทีม</span><b class="num">${cuH(wtGrand)} ชม.</b></div>
-    <div class="pwt-total-bar">${wtKeys.map(k => `<span style="width:${(wtTotal[k] / wtGrand * 100).toFixed(2)}%;background:${cuWtCol(k)}" title="${esc(k)}: ${Math.round(wtTotal[k] / wtGrand * 100)}% · ${cuH(wtTotal[k])} ชม."></span>`).join("")}</div>
-    <div class="legend" style="margin-top:10px">${wtKeys.map(k => `<span><i style="background:${cuWtCol(k)}"></i>${esc(k)} <b class="num">${Math.round(wtTotal[k] / wtGrand * 100)}%</b> <span class="num" style="opacity:.7">(${cuH(wtTotal[k])} ชม.)</span></span>`).join("")}</div>`;
+  const pwtTotalHtml = cuWtStrip(timeAll, typeOfE, "รวมทั้งทีม");
+  const wtdTotalHtml = cuWtStrip(timeP, typeOfE, S.cuWho === "all" ? "รวมทั้งทีม" : "รวมของ " + S.cuWho);
 
   // stash everything the Chart.js builders need; render() calls buildClickupCharts() right after this HTML is injected
   S._chartCtx = { D, T, perf, timeP, timeAll, typeOfE, custOf };
@@ -629,6 +625,7 @@ function vClickup() {
   return `${cuActivity(C)}
     <section class="sec"><div class="sec-h"><h2>ClickUp Monitor</h2><p>ข้อมูลจาก <a class="cu-link" href="${esc(C.list.url)}" target="_blank" rel="noopener">${esc(C.list.name)}</a> และเวลาที่ทั้งทีมลงใน ClickUp · ดึงล่าสุด ${pulled}</p></div>
     <div class="ptools"><div class="seg" role="group" aria-label="คน" style="flex-wrap:wrap">${whoBar}</div>
+      <label class="chk"><input type="checkbox" id="cuhidebank" ${S.cuHideBank ? "checked" : ""}> ซ่อน Bank</label>
       <div class="seg" role="group" aria-label="ช่วงเวลา">${[["day", "วัน"], ["week", "สัปดาห์"], ["month", "เดือน"]].map(([k, l]) => `<button data-cuperiod="${k}" aria-pressed="${S.cuPeriod === k}">${l}</button>`).join("")}</div>
       <div class="navgrp"><button class="nav-btn" data-cunav="prev" aria-label="ก่อนหน้า">‹</button><span class="nav-range">${dm(from)} – ${dm(to)}</span><button class="nav-btn" data-cunav="next" ${from > T ? "disabled" : ""} aria-label="ถัดไป">›</button><button class="nav-reset" data-cunav="reset" ${anchor === T ? "disabled" : ""}>${cuPeriodLabel()}</button></div></div>
     <div class="kpis">
@@ -652,7 +649,7 @@ function vClickup() {
     ${cuProjects(C)}
 
     <section class="sec"><div class="sec-h"><h2>ชั่วโมงตาม Work Type รายวัน</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${dm(from)} – ${dm(to)} · กดแท่งสีเพื่อดูรายละเอียด · “นอก list กลาง” = ลงเวลาใน task ที่ยังไม่ได้อยู่ใน list กลาง จึงไม่รู้ Work Type</p></div>
-      <div class="panel chart-panel"><div class="legend" id="cuWtLegend"></div><div class="chart-box" style="height:280px"><canvas id="cuChartWtDaily"></canvas></div></div>${typeDetail}</section>
+      <div class="panel chart-panel"><div class="pwt-total">${wtdTotalHtml}</div><div class="chart-box" style="height:300px"><canvas id="cuChartWtDaily"></canvas></div></div>${typeDetail}</section>
 
     <section class="sec"><div class="sec-h"><h2>Top ลูกค้าที่ลงเวลามากสุด</h2><p>${S.cuWho === "all" ? "ทั้งทีม" : esc(S.cuWho)} · ${cuPeriodLabel()}${outList ? ` · ${+outList.toFixed(1)} ชม. ลงใน task ที่อยู่นอก list กลาง (ใช้ชื่อ list แทนลูกค้า)` : ""} · แท่งแบ่งสีตาม Work Type · กดแท่งสีเพื่อดูรายละเอียด</p></div>
       <div class="panel chart-panel"><div class="legend" id="cuCustLegend"></div><div class="chart-box" style="height:320px"><canvas id="cuChartCustomers"></canvas></div></div>${custDetail}</section>
@@ -668,13 +665,23 @@ function vClickup() {
 }
 // who updated ClickUp today. time/comment/created are the person's own actions; closed/touched are tasks they own that changed
 const CU_ACT = { time: "ลงเวลา", comment: "comment", created: "สร้าง task", closed: "ปิด task", touched: "task ขยับ" };
+// Work Type share strip: one stacked bar + legend with % and hours (Performance รายคน and ชั่วโมงตาม Work Type รายวัน)
+function cuWtStrip(es, typeOf, label) {
+  const tot = {};
+  for (const e of es) { const k = typeOf(e); tot[k] = (tot[k] || 0) + e.h; }
+  const grand = +Object.values(tot).reduce((a, b) => a + b, 0).toFixed(2), keys = Object.keys(tot).sort(cuWtSort);
+  if (!grand) return `<div class="empty">ยังไม่มีข้อมูลในช่วงนี้</div>`;
+  return `<div class="pwt-total-h"><span>${esc(label)}</span><b class="num">${cuH(grand)} ชม.</b></div>
+    <div class="pwt-total-bar">${keys.map(k => `<span style="width:${(tot[k] / grand * 100).toFixed(2)}%;background:${cuWtCol(k)}" title="${esc(k)}: ${Math.round(tot[k] / grand * 100)}% · ${cuH(tot[k])} ชม."></span>`).join("")}</div>
+    <div class="legend" style="margin-top:10px">${keys.map(k => `<span><i style="background:${cuWtCol(k)}"></i>${esc(k)} <b class="num">${Math.round(tot[k] / grand * 100)}%</b> <span class="num" style="opacity:.7">(${cuH(tot[k])} ชม.)</span></span>`).join("")}</div>`;
+}
 function cuActivity(C) {
   const A = C.activity; if (!A) return "";
   const T = cuToday(), from = A.from || A.date;
   const D = S.cuActDate && S.cuActDate >= from && S.cuActDate <= A.date ? S.cuActDate : A.date;
   const isToday = D === T, dayTxt = isToday ? "วันนี้" : `วันที่ ${dm(D)}`;
   const on = p => p.events.filter(e => (e.date || A.date) === D);
-  const cards = ORDER.map(c => {
+  const cards = cuTeam().map(c => {
     const p = A.people.find(x => x.who === c) || { events: [] }, ev = on(p);
     const n = k => ev.filter(e => e.type === k).length, own = ev.filter(e => /time|comment|created/.test(e.type));
     const h = ev.filter(e => e.type === "time").reduce((a, e) => a + e.h, 0);
@@ -845,6 +852,7 @@ function wireClickup(root) {
   root.querySelectorAll("[data-cuactf]").forEach(el => el.onclick = () => { S.cuActF = el.dataset.cuactf; render(); });
   root.querySelectorAll("[data-cuproj]").forEach(el => el.onclick = () => { S.cuProj = S.cuProj === el.dataset.cuproj ? null : el.dataset.cuproj; render(); });
   const pd = root.querySelector("#cuprojdone"); if (pd) pd.onchange = () => { S.cuProjDone = pd.checked; render(); };
+  const hb = root.querySelector("#cuhidebank"); if (hb) hb.onchange = () => { S.cuHideBank = hb.checked; tryLS("bss-cuhidebank", hb.checked ? "1" : "0"); render(); };
   root.querySelectorAll("[data-cuwho]").forEach(el => el.onclick = () => { S.cuWho = S.cuWho === el.dataset.cuwho && el.tagName === "TR" ? "all" : el.dataset.cuwho; tryLS("bss-cuwho", S.cuWho); render(); });
   root.querySelectorAll("[data-cuperiod]").forEach(el => el.onclick = () => { S.cuPeriod = el.dataset.cuperiod; S.cuAnchor = null; tryLS("bss-cuperiod", S.cuPeriod); render(); });
   root.querySelectorAll("[data-cunav]").forEach(el => el.onclick = () => {
@@ -883,7 +891,7 @@ function buildClickupCharts() {
   Chart.defaults.color = muted;
   Chart.defaults.animation = false; // every render() rebuilds every chart from scratch (same pattern as the rest of this SPA) — skip the grow-in animation so that feels instant, not like a reload
   const tooltipBase = { backgroundColor: panel, titleColor: fg, bodyColor: fg, borderColor: line, borderWidth: 1, padding: 10, titleFont: { weight: 600 }, bodyFont: { weight: 500 }, boxPadding: 4 };
-  const team = ORDER;
+  const team = cuTeam();
   const dowLabel = d => `${dow(d)} ${+d.slice(8, 10)}`;
   const wtKeys = [...new Set(timeP.map(typeOfE))].sort(cuWtSort);
   const legendHtml = wtKeys.map(k => `<span><i style="background:${cuWtCol(k)}"></i>${esc(k)}</span>`).join("");
@@ -992,6 +1000,7 @@ function buildClickupCharts() {
     const byDay = {};
     for (const d of D) byDay[d] = {};
     for (const e of timeP) { if (!(e.date in byDay)) continue; const k = typeOfE(e); byDay[e.date][k] = (byDay[e.date][k] || 0) + e.h; }
+    const dayTot = Object.fromEntries(D.map(d => [d, Object.values(byDay[d]).reduce((a, b) => a + b, 0)])), dayMax = Math.max(1, ...Object.values(dayTot));
     _cuCharts.wtDaily = new Chart(wtdCanvas, {
       type: "bar",
       data: { labels: D.map(dowLabel), datasets: wtKeys.map(k => ({ label: k, data: D.map(d => byDay[d]?.[k] || 0), backgroundColor: cuWtColC(k), borderRadius: 3, borderSkipped: false })) },
@@ -1003,7 +1012,14 @@ function buildClickupCharts() {
           x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { color: fg, font: { weight: 600 }, autoSkip: D.length > 10, maxRotation: 0 } },
           y: { stacked: true, grid: { color: line }, border: { display: false }, ticks: { callback: v => v + " ชม." } },
         },
-        plugins: { legend: { display: false }, tooltip: { ...tooltipBase, callbacks: { label: c => `${c.dataset.label}: ${c.raw.toFixed(1)} ชม.` } } },
+        plugins: { legend: { display: false },
+          tooltip: { ...tooltipBase, callbacks: { label: c => { const t = dayTot[D[c.dataIndex]]; return `${c.dataset.label}: ${c.raw.toFixed(1)} ชม. (${t ? Math.round(c.raw / t * 100) : 0}% ของวัน)`; },
+            footer: items => { const t = dayTot[D[items[0].dataIndex]]; return t ? `รวมวันนี้ ${t.toFixed(1)} ชม.` : ""; } } },
+          datalabels: {
+            display: c => { const v = c.dataset.data[c.dataIndex]; return D.length <= 10 && v > 0 && v / dayMax >= 0.12; },
+            formatter: (v, c) => { const t = dayTot[D[c.dataIndex]]; return [cuH(v) + " ชม.", Math.round(v / t * 100) + "%"]; },
+            color: "#fff", font: { size: 10.5, weight: 600 }, textAlign: "center",
+          } },
       },
     });
   }
